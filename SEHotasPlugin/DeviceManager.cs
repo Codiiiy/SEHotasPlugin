@@ -32,7 +32,7 @@ namespace SEHotasTool.Input
                 devices.Add(joystick);
             }
 
-            return new List<Joystick>(devices); // return a copy if you don’t want outside code messing with it
+            return new List<Joystick>(devices); 
         }
 
         public static void AcquireDevices(IEnumerable<Joystick> joysticks)
