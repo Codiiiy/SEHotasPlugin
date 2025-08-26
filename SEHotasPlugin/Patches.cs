@@ -1,20 +1,67 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Text;
-using HarmonyLib;
 using Sandbox.Game.Gui;
 using Sandbox.Graphics.GUI;
-using VRageMath;
-using VRage.Utils;
-using VRage.Audio;
-using Sandbox.Game.GUI;
-using SEHotasTool.Input;
 using Sandbox.Game;
+using HarmonyLib;
+using Sandbox.Game.Entities;
+using Sandbox.ModAPI;
+using VRage.Game.ModAPI;
+using VRage.Input;
+using System.IO;
+using Sandbox.Game.World;
+using VRageMath;
 
 namespace SEPlugin
 {
-    internal static class PluginPatch
+    [HarmonyPatch(typeof(MySession), "HandleInput")]
+    public class HotasInputPatch
+    {
+        static void Postfix(MySession __instance)
+        {
+            var controller = __instance.ControlledEntity as MyShipController;
+            if (controller == null) return;
+
+            // ----------------
+            // HOTAS AXES
+            // ----------------
+            Vector3 move = Vector3.Zero;       // forward/back, left/right, up/down
+            Vector2 rotation = Vector2.Zero;   // pitch/yaw
+            float roll = 0f;                   // roll
+
+            // Axis mappings
+            var pitch = Binder.GetBinding("Pitch");
+            var yaw = Binder.GetBinding("Yaw");
+            var rollBind = Binder.GetBinding("Roll");
+            var forward = Binder.GetBinding("Forward");
+            var strafe = Binder.GetBinding("Strafe");
+            var up = Binder.GetBinding("Up");
+
+            if (pitch != null) rotation.X = DeviceManager.InputLogger.GetAxisValue(pitch.ButtonName);
+            if (yaw != null) rotation.Y = DeviceManager.InputLogger.GetAxisValue(yaw.ButtonName);
+            if (rollBind != null) roll = DeviceManager.InputLogger.GetAxisValue(rollBind.ButtonName);
+            if (forward != null) move.Z = DeviceManager.InputLogger.GetAxisValue(forward.ButtonName);
+            if (strafe != null) move.X = DeviceManager.InputLogger.GetAxisValue(strafe.ButtonName);
+            if (up != null) move.Y = DeviceManager.InputLogger.GetAxisValue(up.ButtonName);
+
+            controller.MoveIndicator = move;
+            controller.RotationIndicator = rotation;
+            controller.RollIndicator = roll;
+
+            // ----------------
+            // HOTAS BUTTONS
+            // ----------------
+            var fire = Binder.GetBinding("Fire");
+            if (fire != null && DeviceManager.IsButtonPressed(fire.ButtonName))
+            {
+                controller.Shoot(MyShootActionEnum.PrimaryAction);
+            }
+
+            // You can add secondary fire, landing gear, lights, etc. the same way
+        }
+    }
+
+    public static class PluginPatch
     {
         internal static void RecreateControlsPostfix(MyGuiScreenOptionsControls __instance)
         {
@@ -39,76 +86,10 @@ namespace SEPlugin
                 {
                     var listInstance = Activator.CreateInstance(valueType);
                     dict.Add(keyObj, listInstance);
-                    AddJoystickPageContent(__instance, listInstance, keyObj);
-                }
-            }
-        }
-
-        private static void AddJoystickPageContent(MyGuiScreenOptionsControls instance, object controlsList, object keyObj)
-        {
-            var controlsType = typeof(MyGuiScreenOptionsControls);
-            var leftOriginField = controlsType.GetField("m_controlsOriginLeft", BindingFlags.Instance | BindingFlags.NonPublic);
-            var rightOriginField = controlsType.GetField("m_controlsOriginRight", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            if (leftOriginField?.GetValue(instance) is Vector2 leftOrigin &&
-                rightOriginField?.GetValue(instance) is Vector2 rightOrigin)
-            {
-                var controlsListObj = (System.Collections.IList)controlsList;
-                float deltaY = 2f;
-
-                var titleLabel = new MyGuiControlLabel(
-                    leftOrigin + deltaY * MyGuiConstants.CONTROLS_DELTA,
-                    null,
-                    "Custom Joystick Settings",
-                    null,
-                    0.9f,
-                    "Blue",
-                    MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER
-                );
-                controlsListObj.Add(titleLabel);
-                deltaY += 2f;
-
-                var combobox = new MyGuiControlCombobox(
-                    rightOrigin + deltaY * MyGuiConstants.CONTROLS_DELTA - new Vector2(455f / MyGuiConstants.GUI_OPTIMAL_SIZE.X / 2f, 0f),
-                    null, null, null, 10, null,
-                    useScrollBarOffset: false,
-                    null,
-                    MyGuiDrawAlignEnum.HORISONTAL_CENTER_AND_VERTICAL_CENTER,
-                    null
-                );
-                combobox.Size = new Vector2(455f / MyGuiConstants.GUI_OPTIMAL_SIZE.X, 0f);
-                combobox.SetTooltip("Select an option from the dropdown");
-
-                var devices = DeviceManager.Devices;
-
-                combobox.AddItem(0, "None", null, null);
-
-                int deviceIndex = 1;
-                foreach (var device in devices)
-                {
-                    try
-                    {
-                        string deviceName = device.Information?.ProductName ?? $"Device {deviceIndex}";
-                        combobox.AddItem(deviceIndex, deviceName, null, null);
-                        deviceIndex++;
-                    }
-                    catch (Exception ex)
-                    {
-                        combobox.AddItem(deviceIndex, $"Unknown Device {deviceIndex}", null, null);
-                        deviceIndex++;
-                    }
-                }
-
-                combobox.SelectItemByKey(0L);
-
-                controlsListObj.Add(combobox);
-
-                foreach (MyGuiControlBase control in controlsListObj)
-                {
-                    control.Visible = false;
-                    instance.Controls.Add(control);
+                    OptionsPage.AddHotasPageContent(__instance, listInstance, keyObj);
                 }
             }
         }
     }
 }
+
