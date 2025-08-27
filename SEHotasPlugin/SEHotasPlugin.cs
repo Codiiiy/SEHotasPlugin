@@ -1,7 +1,10 @@
 ﻿using VRage.Plugins;
 using HarmonyLib;
 using System.Reflection;
-using SEHotasTool.Input;
+using SharpDX.DirectInput;
+using System.Collections.Generic;
+using Sandbox.Game.Entities;
+
 
 namespace SEPlugin
 {
@@ -11,19 +14,27 @@ namespace SEPlugin
 
         public void Init(object gameInstance)
         {
-            DeviceManager.DetectDevices();
+            DeviceManager.Init();
             _harmony = new Harmony("com.myseplugin.joystickmenu");
-            var target = typeof(Sandbox.Game.Gui.MyGuiScreenOptionsControls)
-                         .GetMethod("RecreateControls", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            var postfix = typeof(PluginPatch)
-                          .GetMethod(nameof(PluginPatch.RecreateControlsPostfix), BindingFlags.Static | BindingFlags.NonPublic);
 
-            _harmony.Patch(target, postfix: new HarmonyMethod(postfix));
-
+            // Patch RecreateControls
+            var recreateTarget = typeof(Sandbox.Game.Gui.MyGuiScreenOptionsControls)
+                .GetMethod("RecreateControls", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            var recreatePostfix = typeof(PluginPatch)
+                .GetMethod(nameof(PluginPatch.RecreateControlsPostfix), BindingFlags.Static | BindingFlags.NonPublic);
+            _harmony.Patch(recreateTarget, postfix: new HarmonyMethod(recreatePostfix));
+            _harmony.PatchAll();
         }
 
-        public void Update() { }
+        public void Update()
+        {
+            DeviceManager.InputCapture.Update();
+            DeviceManager.LogInputsToDesktop();
+        }
+        public void UpdateBeforeSimulation()
+        {
 
+        }
         public void Dispose()
         {
             DeviceManager.UnacquireDevices();

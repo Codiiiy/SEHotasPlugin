@@ -82,6 +82,9 @@
       <HintPath>X:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64\VRage.Game.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="VRage.Input">
+      <HintPath>X:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64\VRage.Input.dll</HintPath>
+    </Reference>
     <Reference Include="VRage.Library">
       <HintPath>X:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64\VRage.Library.dll</HintPath>
       <Private>False</Private>
@@ -93,9 +96,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DeviceManager.cs" />
+    <Compile Include="JoystickPage.cs" />
     <Compile Include="Patches.cs" />
     <Compile Include="SEHotasPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utilites.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
