@@ -11,6 +11,7 @@ using VRage.Input;
 using System.IO;
 using Sandbox.Game.World;
 using VRageMath;
+using SEHotasPlugin;
 
 namespace SEPlugin
 {
@@ -19,47 +20,40 @@ namespace SEPlugin
     {
         static void Postfix(MySession __instance)
         {
+            // Log to desktop
+            try
+            {
+                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+                string logFile = Path.Combine(desktopPath, "HotasInputLog.txt");
+                File.AppendAllText(logFile, $"{DateTime.Now}: HotasInputPatch running\n");
+            }
+            catch { /* ignore logging errors */ }
+
             var controller = __instance.ControlledEntity as MyShipController;
             if (controller == null) return;
+            Logger.LogToDesktop("axis values" + DeviceManager.InputLogger.GetAxisValue("X").ToString() + 
+                DeviceManager.InputLogger.GetAxisValue("Y").ToString() +
+                DeviceManager.InputLogger.GetAxisValue("Z").ToString());
+            Vector3 move = new Vector3(
+                DeviceManager.InputLogger.GetAxisValue("X"),            
+                DeviceManager.InputLogger.GetAxisValue("Y"),
+                DeviceManager.InputLogger.GetAxisValue("Z")
+            );
 
-            // ----------------
-            // HOTAS AXES
-            // ----------------
-            Vector3 move = Vector3.Zero;       // forward/back, left/right, up/down
-            Vector2 rotation = Vector2.Zero;   // pitch/yaw
-            float roll = 0f;                   // roll
+            Vector2 rotation = new Vector2(
+                DeviceManager.InputLogger.GetAxisValue("Ry"),
+                DeviceManager.InputLogger.GetAxisValue("Rx")
+            );
 
-            // Axis mappings
-            var pitch = Binder.GetBinding("Pitch");
-            var yaw = Binder.GetBinding("Yaw");
-            var rollBind = Binder.GetBinding("Roll");
-            var forward = Binder.GetBinding("Forward");
-            var strafe = Binder.GetBinding("Strafe");
-            var up = Binder.GetBinding("Up");
+            float roll = DeviceManager.InputLogger.GetAxisValue("Rz");
+            controller.MoveAndRotate(move, rotation, roll);
 
-            if (pitch != null) rotation.X = DeviceManager.InputLogger.GetAxisValue(pitch.ButtonName);
-            if (yaw != null) rotation.Y = DeviceManager.InputLogger.GetAxisValue(yaw.ButtonName);
-            if (rollBind != null) roll = DeviceManager.InputLogger.GetAxisValue(rollBind.ButtonName);
-            if (forward != null) move.Z = DeviceManager.InputLogger.GetAxisValue(forward.ButtonName);
-            if (strafe != null) move.X = DeviceManager.InputLogger.GetAxisValue(strafe.ButtonName);
-            if (up != null) move.Y = DeviceManager.InputLogger.GetAxisValue(up.ButtonName);
-
-            controller.MoveIndicator = move;
-            controller.RotationIndicator = rotation;
-            controller.RollIndicator = roll;
-
-            // ----------------
-            // HOTAS BUTTONS
-            // ----------------
             var fire = Binder.GetBinding("Fire");
-            if (fire != null && DeviceManager.IsButtonPressed(fire.ButtonName))
-            {
+            if (fire != null && DeviceManager.InputLogger.IsButtonPressed(fire.ButtonName))
                 controller.Shoot(MyShootActionEnum.PrimaryAction);
-            }
-
-            // You can add secondary fire, landing gear, lights, etc. the same way
         }
     }
+
 
     public static class PluginPatch
     {

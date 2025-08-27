@@ -23,7 +23,7 @@ namespace SEPlugin
             var recreatePostfix = typeof(PluginPatch)
                 .GetMethod(nameof(PluginPatch.RecreateControlsPostfix), BindingFlags.Static | BindingFlags.NonPublic);
             _harmony.Patch(recreateTarget, postfix: new HarmonyMethod(recreatePostfix));
-
+            _harmony.PatchAll();
         }
 
         public void Update()
