@@ -11,7 +11,6 @@ using VRage.Input;
 using System.IO;
 using Sandbox.Game.World;
 using VRageMath;
-using SEHotasPlugin;
 
 namespace SEPlugin
 {
@@ -20,32 +19,35 @@ namespace SEPlugin
     {
         static void Postfix(MySession __instance)
         {
-
-
             var controller = __instance.ControlledEntity as MyShipController;
             if (controller == null) return;
+
             if (Debug.debugMode)
             {
-                Debug.LogToDesktop("axis values" + DeviceManager.InputLogger.GetAxisValue("X").ToString() +
-    DeviceManager.InputLogger.GetAxisValue("Y").ToString() +
-    DeviceManager.InputLogger.GetAxisValue("Z").ToString());
-
+                Debug.LogToDesktop("Bind checking) " + Binder.GetBoundButton("RotateLeft") + " Value: " + DeviceManager.GetInputValue("RotateLeft"));
+                Binder.ExportBindingsToDesktop();
             }
 
+            // Calculate movement vector - works with any binding type (button, axis, POV)
             Vector3 move = new Vector3(
-                DeviceManager.InputLogger.GetAxisValue("X"),
-                DeviceManager.InputLogger.GetAxisValue("Y"),
-                DeviceManager.InputLogger.GetAxisValue("Z")
+                DeviceManager.GetRawInputValue("StrafeRight") - DeviceManager.GetRawInputValue("StrafeLeft"),  // strafe left(-)/right(+)
+                (DeviceManager.GetRawInputValue("Up") - DeviceManager.GetRawInputValue("Down")),                // up(+)/down(-)
+                (DeviceManager.GetRawInputValue("Forward") - DeviceManager.GetRawInputValue("Backward")) * 100f        // forward(+)/backward(-)
             );
 
+            // Calculate rotation - works with any binding type
             Vector2 rotation = new Vector2(
-                DeviceManager.InputLogger.GetAxisValue("Ry"),
-                DeviceManager.InputLogger.GetAxisValue("Rx")
+                (DeviceManager.GetRawInputValue("RotateUp") - DeviceManager.GetRawInputValue("RotateDown")) ,    // pitch up(+)/down(-)
+                DeviceManager.GetRawInputValue("RotateLeft") - DeviceManager.GetRawInputValue("RotateRight")  // yaw left(-)/right(+)
             );
 
-            float roll = DeviceManager.InputLogger.GetAxisValue("Rz");
+            // Calculate roll - works with any binding type  
+            float roll = DeviceManager.GetRawInputValue("RollLeft") - DeviceManager.GetRawInputValue("RollRight"); // roll left(-)/right(+)
+
+            // Apply movement and rotation
             controller.MoveAndRotate(move, rotation, roll);
 
+            // Handle firing
             var fire = Binder.GetBinding("Fire");
             if (fire != null && DeviceManager.InputLogger.IsButtonPressed(fire.ButtonName))
                 controller.Shoot(MyShootActionEnum.PrimaryAction);
