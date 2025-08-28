@@ -484,16 +484,16 @@ namespace SEHotasPlugin
                     string axisName = parts[0];
                     string direction = parts[2];
                     float axisValue = InputLogger.GetAxisValue(axisName);
+
                     if (direction == "-")
-                        return -axisValue;
+                        return axisValue < 0 ? -axisValue : 0f;  
                     else
-                        return axisValue;
+                        return axisValue > 0 ? axisValue : 0f;   
                 }
             }
 
             if (InputLogger.IsButtonPressed(boundButton))
                 return 1.0f;
-
             return 0f;
         }
     }

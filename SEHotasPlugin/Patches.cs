@@ -26,16 +26,16 @@ namespace SEHotasPlugin
 
             Vector3 move = new Vector3(
                 DeviceManager.GetRawInputValue("StrafeRight") - DeviceManager.GetRawInputValue("StrafeLeft"),  // strafe left(-)/right(+)
-                (DeviceManager.GetRawInputValue("Up") - DeviceManager.GetRawInputValue("Down")),                // up(+)/down(-)
-                (DeviceManager.GetRawInputValue("Forward") - DeviceManager.GetRawInputValue("Backward")) * 100f        // forward(+)/backward(-)
+                (DeviceManager.GetRawInputValue("Up") - DeviceManager.GetRawInputValue("Down")) * 3f,                // up(+)/down(-)
+                -((DeviceManager.GetRawInputValue("Forward") - DeviceManager.GetRawInputValue("Backward")))        // forward(+)/backward(-)
             );
 
             Vector2 rotation = new Vector2(
-                (DeviceManager.GetRawInputValue("RotateUp") - DeviceManager.GetRawInputValue("RotateDown")) ,    // pitch up(+)/down(-)
-                DeviceManager.GetRawInputValue("RotateLeft") - DeviceManager.GetRawInputValue("RotateRight")  // yaw left(-)/right(+)
-            );
+                -(DeviceManager.GetRawInputValue("RotateUp") - DeviceManager.GetRawInputValue("RotateDown")),  // Invert pitch
+                   -(DeviceManager.GetRawInputValue("RotateLeft") - DeviceManager.GetRawInputValue("RotateRight")) // Invert yaw
+);
 
-            float roll = DeviceManager.GetRawInputValue("RollLeft") - DeviceManager.GetRawInputValue("RollRight"); // roll left(-)/right(+)
+            float roll = -(DeviceManager.GetRawInputValue("RollLeft") - DeviceManager.GetRawInputValue("RollRight")); // Invert roll
 
             controller.MoveAndRotate(move, rotation, roll);
 
