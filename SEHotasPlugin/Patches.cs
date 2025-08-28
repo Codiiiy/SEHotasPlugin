@@ -20,22 +20,20 @@ namespace SEPlugin
     {
         static void Postfix(MySession __instance)
         {
-            // Log to desktop
-            try
-            {
-                string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-                string logFile = Path.Combine(desktopPath, "HotasInputLog.txt");
-                File.AppendAllText(logFile, $"{DateTime.Now}: HotasInputPatch running\n");
-            }
-            catch { /* ignore logging errors */ }
+
 
             var controller = __instance.ControlledEntity as MyShipController;
             if (controller == null) return;
-            Logger.LogToDesktop("axis values" + DeviceManager.InputLogger.GetAxisValue("X").ToString() + 
-                DeviceManager.InputLogger.GetAxisValue("Y").ToString() +
-                DeviceManager.InputLogger.GetAxisValue("Z").ToString());
+            if (Debug.debugMode)
+            {
+                Debug.LogToDesktop("axis values" + DeviceManager.InputLogger.GetAxisValue("X").ToString() +
+    DeviceManager.InputLogger.GetAxisValue("Y").ToString() +
+    DeviceManager.InputLogger.GetAxisValue("Z").ToString());
+
+            }
+
             Vector3 move = new Vector3(
-                DeviceManager.InputLogger.GetAxisValue("X"),            
+                DeviceManager.InputLogger.GetAxisValue("X"),
                 DeviceManager.InputLogger.GetAxisValue("Y"),
                 DeviceManager.InputLogger.GetAxisValue("Z")
             );

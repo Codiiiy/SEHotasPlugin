@@ -96,7 +96,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="DeviceManager.cs" />
-    <Compile Include="JoystickPage.cs" />
+    <Compile Include="OptionPage.cs" />
     <Compile Include="Patches.cs" />
     <Compile Include="SEHotasPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

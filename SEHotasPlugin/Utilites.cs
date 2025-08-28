@@ -1,11 +1,11 @@
 ﻿using System;
 using System.IO;
 
-
 namespace SEHotasPlugin
 {
-    class Logger
+    class Debug
     {
+        public static bool debugMode = true;
         public static void LogToDesktop(string message)
         {
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
