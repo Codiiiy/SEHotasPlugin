@@ -33,7 +33,6 @@ namespace SEHotasPlugin
                 float deltaY = 0.9f;
                 var centerOrigin = (leftOrigin + rightOrigin) / 2f;
 
-                // Add label + combo
                 var deviceLabel = new MyGuiControlLabel(
                     leftOrigin + deltaY * MyGuiConstants.CONTROLS_DELTA,
                     null,
@@ -56,10 +55,10 @@ namespace SEHotasPlugin
                 controlsListObj.Add(controlTypeCombo);
                 instance.Controls.Add(controlTypeCombo);
 
-                // helper to build rows dynamically
+
                 void RebuildRows(string[] page)
                 {
-                    // remove old rows
+
                     for (int i = controlsListObj.Count - 1; i >= 0; i--)
                     {
                         if (controlsListObj[i] is MyGuiControlLabel || controlsListObj[i] is MyGuiControlButton)
@@ -69,7 +68,6 @@ namespace SEHotasPlugin
                         }
                     }
 
-                    // add new rows
                     for (int i = 0; i < page.Length; i++)
                     {
                         var rowDelta = MyGuiConstants.CONTROLS_DELTA * (i + 1.85f);
@@ -86,7 +84,7 @@ namespace SEHotasPlugin
                         controlsListObj.Add(label);
                         instance.Controls.Add(label);
 
-                        int captureIndex = i; // closure safety
+                        int captureIndex = i; 
 
                         string actionKey = page[i].Replace(" ", "");
                         string existingBinding = Binder.GetBoundButton(actionKey);
@@ -126,10 +124,8 @@ namespace SEHotasPlugin
                     }
                 }
 
-                // Initial build
                 RebuildRows(movementNames);
 
-                // Combo change event
                 controlTypeCombo.ItemSelected += () =>
                 {
                     string[] newPage;

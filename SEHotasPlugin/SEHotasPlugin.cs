@@ -17,7 +17,6 @@ namespace SEHotasPlugin
             DeviceManager.Init();
             _harmony = new Harmony("com.myseplugin.joystickmenu");
 
-            // Patch RecreateControls
             var recreateTarget = typeof(Sandbox.Game.Gui.MyGuiScreenOptionsControls)
                 .GetMethod("RecreateControls", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             var recreatePostfix = typeof(PluginPatch)

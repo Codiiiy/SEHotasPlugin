@@ -347,7 +347,6 @@ namespace SEHotasPlugin
                         joystick.Poll();
                         var state = joystick.GetCurrentState();
 
-                        // Handle regular buttons
                         if (buttonName.StartsWith("Button") && !buttonName.Contains("Axis"))
                         {
                             if (int.TryParse(buttonName.Substring(6), out int index))
@@ -358,7 +357,6 @@ namespace SEHotasPlugin
                             }
                         }
 
-                        // Handle POV buttons
                         if (buttonName.StartsWith("POV"))
                         {
                             var parts = buttonName.Split(' ');
@@ -379,7 +377,6 @@ namespace SEHotasPlugin
                             }
                         }
 
-                        // Handle axis-based buttons (like "X Axis +")
                         if (buttonName.Contains("Axis"))
                         {
                             var parts = buttonName.Split(' ');
@@ -411,7 +408,7 @@ namespace SEHotasPlugin
                     case "Rx": return state.RotationX;
                     case "Ry": return state.RotationY;
                     case "Rz": return state.RotationZ;
-                    default: return 32767; // Center value
+                    default: return 32767; 
                 }
             }
 
@@ -438,14 +435,12 @@ namespace SEHotasPlugin
             }
         }
 
-        // Universal method to handle any type of binding (button, axis, POV)
         public static float GetInputValue(string actionName)
         {
             string boundButton = Binder.GetBoundButton(actionName);
             if (string.IsNullOrEmpty(boundButton))
                 return 0f;
 
-            // Handle axis bindings (e.g., "X Axis +", "Ry Axis -")
             if (boundButton.Contains("Axis"))
             {
                 string[] parts = boundButton.Split(' ');
@@ -456,39 +451,31 @@ namespace SEHotasPlugin
 
                     float axisValue = InputLogger.GetAxisValue(axisName);
 
-                    // For negative bindings, we want the negative portion of the axis
-                    // For positive bindings, we want the positive portion
                     if (direction == "-")
                     {
-                        // Return positive value when axis is in negative direction
                         return axisValue < 0 ? -axisValue : 0f;
                     }
                     else if (direction == "+")
                     {
-                        // Return positive value when axis is in positive direction
                         return axisValue > 0 ? axisValue : 0f;
                     }
 
-                    // Fallback - return raw axis value
                     return axisValue;
                 }
             }
 
-            // Handle all other bindings (buttons, POV) - return 1.0 if active, 0.0 if not
             if (InputLogger.IsButtonPressed(boundButton))
                 return 1.0f;
 
             return 0f;
         }
 
-        // Method to get raw axis value (can be negative or positive)
         public static float GetRawInputValue(string actionName)
         {
             string boundButton = Binder.GetBoundButton(actionName);
             if (string.IsNullOrEmpty(boundButton))
                 return 0f;
 
-            // Handle axis bindings - return raw axis value with direction multiplier
             if (boundButton.Contains("Axis"))
             {
                 string[] parts = boundButton.Split(' ');
@@ -496,10 +483,7 @@ namespace SEHotasPlugin
                 {
                     string axisName = parts[0];
                     string direction = parts[2];
-
                     float axisValue = InputLogger.GetAxisValue(axisName);
-
-                    // Apply direction multiplier
                     if (direction == "-")
                         return -axisValue;
                     else
@@ -507,7 +491,6 @@ namespace SEHotasPlugin
                 }
             }
 
-            // Handle button/POV bindings
             if (InputLogger.IsButtonPressed(boundButton))
                 return 1.0f;
 
