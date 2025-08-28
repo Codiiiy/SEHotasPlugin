@@ -1,7 +1,9 @@
 ﻿using Sandbox.Graphics.GUI;
+using SharpDX;
 using SharpDX.DirectInput;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using VRageMath;
 
@@ -11,6 +13,16 @@ namespace SEPlugin
     {
         private static readonly Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>> _bindings =
             new Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>>();
+        public static Dictionary<string, float> AxisSensitivity = new Dictionary<string, float>()
+        {
+
+            { "RotateLeft",   1.0f },
+            { "RotateRight",  1.0f },
+            { "RotateUp",     1.0f },
+            { "RotateDown",   1.0f },
+            { "RollLeft",     1.0f },
+            { "RollRight",    1.0f }
+        };
 
         public static void Bind(string deviceName, string actionName, DeviceManager.DeviceButton deviceButton)
         {
@@ -27,6 +39,12 @@ namespace SEPlugin
                     return deviceBindings[actionName];
 
             return null;
+        }
+        public static string GetBoundButton(string actionName)
+        {
+            var binding = GetBinding(actionName);
+            return binding?.ButtonName;
+
         }
 
         public static void ExportBindingsToDesktop()
@@ -214,7 +232,7 @@ namespace SEPlugin
                             if (state.Buttons[i] && !snap.Buttons[i])
                             {
                                 Finish(snap.Joystick, new DeviceManager.DeviceButton($"Button{i + 1}"));
-                                return; 
+                                return;
                             }
                         }
 
@@ -232,7 +250,7 @@ namespace SEPlugin
                             {
                                 string dir = PovToDirection(angle);
                                 Finish(snap.Joystick, new DeviceManager.DeviceButton($"POV{i + 1} {dir}"));
-                                return; 
+                                return;
                             }
                         }
                     }
@@ -273,6 +291,7 @@ namespace SEPlugin
         public static class InputLogger
         {
             private const float AxisDeadzone = 0.1f;
+            private const float ButtonAxisThreshold = 0.5f;
 
             public static bool IsButtonPressed(string buttonName)
             {
@@ -283,7 +302,8 @@ namespace SEPlugin
                         joystick.Poll();
                         var state = joystick.GetCurrentState();
 
-                        if (buttonName.StartsWith("Button"))
+                        // Handle regular buttons
+                        if (buttonName.StartsWith("Button") && !buttonName.Contains("Axis"))
                         {
                             if (int.TryParse(buttonName.Substring(6), out int index))
                             {
@@ -293,6 +313,7 @@ namespace SEPlugin
                             }
                         }
 
+                        // Handle POV buttons
                         if (buttonName.StartsWith("POV"))
                         {
                             var parts = buttonName.Split(' ');
@@ -313,35 +334,40 @@ namespace SEPlugin
                             }
                         }
 
+                        // Handle axis-based buttons (like "X Axis +")
                         if (buttonName.Contains("Axis"))
                         {
                             var parts = buttonName.Split(' ');
-                            if (parts.Length == 3)
+                            if (parts.Length == 3 && parts[1] == "Axis")
                             {
                                 string axis = parts[0];
                                 string sign = parts[2];
 
-                                int value;
-                                switch (axis)
-                                {
-                                    case "X": value = state.X; break;
-                                    case "Y": value = state.Y; break;
-                                    case "Z": value = state.Z; break;
-                                    case "Rx": value = state.RotationX; break;
-                                    case "Ry": value = state.RotationY; break;
-                                    case "Rz": value = state.RotationZ; break;
-                                    default: value = 0; break;
-                                }
+                                int value = GetRawAxisValue(state, axis);
+                                float normalized = (value - 32767.5f) / 32767.5f;
 
-                                float normalized = (value - 32767f) / 32767f;
-                                if (sign == "+" && normalized > 0.5f) return true;
-                                if (sign == "-" && normalized < -0.5f) return true;
+                                if (sign == "+" && normalized > ButtonAxisThreshold) return true;
+                                if (sign == "-" && normalized < -ButtonAxisThreshold) return true;
                             }
                         }
                     }
                     catch { continue; }
                 }
                 return false;
+            }
+
+            private static int GetRawAxisValue(JoystickState state, string axisName)
+            {
+                switch (axisName)
+                {
+                    case "X": return state.X;
+                    case "Y": return state.Y;
+                    case "Z": return state.Z;
+                    case "Rx": return state.RotationX;
+                    case "Ry": return state.RotationY;
+                    case "Rz": return state.RotationZ;
+                    default: return 32767; // Center value
+                }
             }
 
             public static float GetAxisValue(string axisName)
@@ -353,20 +379,12 @@ namespace SEPlugin
                         joystick.Poll();
                         var state = joystick.GetCurrentState();
 
-                        int value;
-                        switch (axisName)
-                        {
-                            case "X": value = state.X; break;
-                            case "Y": value = state.Y; break;
-                            case "Z": value = state.Z; break;
-                            case "Rx": value = state.RotationX; break;
-                            case "Ry": value = state.RotationY; break;
-                            case "Rz": value = state.RotationZ; break;
-                            default: value = 0; break;
-                        }
+                        int value = GetRawAxisValue(state, axisName);
+                        float normalized = (value - 32767.5f) / 32767.5f;
 
-                        float normalized = (value - 32767f) / 32767f;
-                        if (Math.Abs(normalized) < AxisDeadzone) normalized = 0f;
+                        if (Math.Abs(normalized) < AxisDeadzone)
+                            normalized = 0f;
+
                         return normalized;
                     }
                     catch { continue; }
@@ -375,9 +393,80 @@ namespace SEPlugin
             }
         }
 
-        public static bool IsButtonPressed(string buttonName)
+        // Universal method to handle any type of binding (button, axis, POV)
+        public static float GetInputValue(string actionName)
         {
-            return InputLogger.IsButtonPressed(buttonName);
+            string boundButton = Binder.GetBoundButton(actionName);
+            if (string.IsNullOrEmpty(boundButton))
+                return 0f;
+
+            // Handle axis bindings (e.g., "X Axis +", "Ry Axis -")
+            if (boundButton.Contains("Axis"))
+            {
+                string[] parts = boundButton.Split(' ');
+                if (parts.Length >= 3 && parts[1] == "Axis")
+                {
+                    string axisName = parts[0];
+                    string direction = parts[2];
+
+                    float axisValue = InputLogger.GetAxisValue(axisName);
+
+                    // For negative bindings, we want the negative portion of the axis
+                    // For positive bindings, we want the positive portion
+                    if (direction == "-")
+                    {
+                        // Return positive value when axis is in negative direction
+                        return axisValue < 0 ? -axisValue : 0f;
+                    }
+                    else if (direction == "+")
+                    {
+                        // Return positive value when axis is in positive direction
+                        return axisValue > 0 ? axisValue : 0f;
+                    }
+
+                    // Fallback - return raw axis value
+                    return axisValue;
+                }
+            }
+
+            // Handle all other bindings (buttons, POV) - return 1.0 if active, 0.0 if not
+            if (InputLogger.IsButtonPressed(boundButton))
+                return 1.0f;
+
+            return 0f;
+        }
+
+        // Method to get raw axis value (can be negative or positive)
+        public static float GetRawInputValue(string actionName)
+        {
+            string boundButton = Binder.GetBoundButton(actionName);
+            if (string.IsNullOrEmpty(boundButton))
+                return 0f;
+
+            // Handle axis bindings - return raw axis value with direction multiplier
+            if (boundButton.Contains("Axis"))
+            {
+                string[] parts = boundButton.Split(' ');
+                if (parts.Length >= 3 && parts[1] == "Axis")
+                {
+                    string axisName = parts[0];
+                    string direction = parts[2];
+
+                    float axisValue = InputLogger.GetAxisValue(axisName);
+
+                    // Apply direction multiplier
+                    if (direction == "-")
+                        return -axisValue;
+                    else
+                        return axisValue;
+                }
+            }
+
+            // Handle button/POV bindings
+            if (InputLogger.IsButtonPressed(boundButton))
+                return 1.0f;
+
+            return 0f;
         }
     }
 }
