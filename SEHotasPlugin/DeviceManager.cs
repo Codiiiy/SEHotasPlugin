@@ -156,84 +156,108 @@ namespace SEPlugin
         public static class InputCapture
         {
             private static bool _isCapturing = false;
-            private static Action<DeviceButton> _onCaptured;
-            private static Joystick _joystick;
+            private static Action<Joystick, DeviceManager.DeviceButton> _onCaptured;
+
+            private class DeviceSnapshot
+            {
+                public Joystick Joystick;
+                public bool[] Buttons;
+                public int X, Y, Z, Rx, Ry, Rz;
+                public int[] POVs;
+            }
+
+            private static List<DeviceSnapshot> _snapshots = new List<DeviceSnapshot>();
             private const float AxisDeadzone = 0.2f;
 
-            private static bool[] _initialButtons;
-            private static int _initialX, _initialY, _initialZ, _initialRx, _initialRy, _initialRz;
-            private static int[] _initialPOVs;
-
-            public static void StartCapture(Joystick joystick, Action<DeviceButton> onCaptured)
+            public static void StartCapture(Action<Joystick, DeviceManager.DeviceButton> onCaptured)
             {
-                _joystick = joystick;
                 _onCaptured = onCaptured;
                 _isCapturing = true;
+                _snapshots.Clear();
 
-                var state = _joystick.GetCurrentState();
-                _initialButtons = state.Buttons;
-                _initialX = state.X;
-                _initialY = state.Y;
-                _initialZ = state.Z;
-                _initialRx = state.RotationX;
-                _initialRy = state.RotationY;
-                _initialRz = state.RotationZ;
-                _initialPOVs = state.PointOfViewControllers;
+                foreach (var joy in DeviceManager.Devices)
+                {
+                    try
+                    {
+                        joy.Poll();
+                        var state = joy.GetCurrentState();
+                        _snapshots.Add(new DeviceSnapshot
+                        {
+                            Joystick = joy,
+                            Buttons = (bool[])state.Buttons.Clone(),
+                            X = state.X,
+                            Y = state.Y,
+                            Z = state.Z,
+                            Rx = state.RotationX,
+                            Ry = state.RotationY,
+                            Rz = state.RotationZ,
+                            POVs = (int[])state.PointOfViewControllers.Clone()
+                        });
+                    }
+                    catch { }
+                }
             }
 
             public static void Update()
             {
-                if (!_isCapturing || _joystick == null) return;
+                if (!_isCapturing) return;
 
-                try { _joystick.Poll(); }
-                catch { StopCapture(); return; }
-
-                var state = _joystick.GetCurrentState();
-                if (state == null) return;
-
-                for (int i = 0; i < state.Buttons.Length; i++)
-                    if (state.Buttons[i] && !_initialButtons[i])
-                        Finish(new DeviceButton($"Button{i + 1}"));
-
-                CheckAxis("X", state.X, _initialX);
-                CheckAxis("Y", state.Y, _initialY);
-                CheckAxis("Z", state.Z, _initialZ);
-                CheckAxis("Rx", state.RotationX, _initialRx);
-                CheckAxis("Ry", state.RotationY, _initialRy);
-                CheckAxis("Rz", state.RotationZ, _initialRz);
-
-                var povs = state.PointOfViewControllers;
-                for (int i = 0; i < povs.Length; i++)
+                foreach (var snap in _snapshots.ToArray())
                 {
-                    int angle = povs[i];
-                    if (angle >= 0 && (_initialPOVs[i] < 0 || angle != _initialPOVs[i]))
+                    try
                     {
-                        string direction = PovToDirection(angle);
-                        Finish(new DeviceButton($"POV{i + 1} {direction}"));
-                        return;
+                        snap.Joystick.Poll();
+                        var state = snap.Joystick.GetCurrentState();
+
+                        for (int i = 0; i < state.Buttons.Length; i++)
+                        {
+                            if (state.Buttons[i] && !snap.Buttons[i])
+                            {
+                                Finish(snap.Joystick, new DeviceManager.DeviceButton($"Button{i + 1}"));
+                                return; 
+                            }
+                        }
+
+                        if (CheckAxis(snap, "X", state.X, snap.X)) return;
+                        if (CheckAxis(snap, "Y", state.Y, snap.Y)) return;
+                        if (CheckAxis(snap, "Z", state.Z, snap.Z)) return;
+                        if (CheckAxis(snap, "Rx", state.RotationX, snap.Rx)) return;
+                        if (CheckAxis(snap, "Ry", state.RotationY, snap.Ry)) return;
+                        if (CheckAxis(snap, "Rz", state.RotationZ, snap.Rz)) return;
+
+                        for (int i = 0; i < state.PointOfViewControllers.Length; i++)
+                        {
+                            int angle = state.PointOfViewControllers[i];
+                            if (angle >= 0 && (snap.POVs[i] < 0 || angle != snap.POVs[i]))
+                            {
+                                string dir = PovToDirection(angle);
+                                Finish(snap.Joystick, new DeviceManager.DeviceButton($"POV{i + 1} {dir}"));
+                                return; 
+                            }
+                        }
                     }
+                    catch { continue; }
                 }
             }
 
-            private static void CheckAxis(string name, int value, int initial)
+            private static bool CheckAxis(DeviceSnapshot snap, string name, int value, int initial)
             {
                 float normalized = (value - initial) / 32767f;
                 if (Math.Abs(normalized) > AxisDeadzone)
-                    Finish(new DeviceButton($"{name} Axis {(normalized > 0 ? "+" : "-")}"));
+                {
+                    Finish(snap.Joystick, new DeviceManager.DeviceButton($"{name} Axis {(normalized > 0 ? "+" : "-")}"));
+                    return true;
+                }
+                return false;
             }
 
-            private static void Finish(DeviceButton button)
-            {
-                _isCapturing = false;
-                _onCaptured?.Invoke(button);
-                StopCapture();
-            }
 
-            private static void StopCapture()
+            private static void Finish(Joystick joystick, DeviceManager.DeviceButton button)
             {
                 _isCapturing = false;
+                _onCaptured?.Invoke(joystick, button);
                 _onCaptured = null;
-                _joystick = null;
+                _snapshots.Clear();
             }
 
             private static string PovToDirection(int angle)
