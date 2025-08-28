@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace SEPlugin
+namespace SEHotasPlugin
 {
     class Debug
     {

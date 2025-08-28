@@ -8,9 +8,9 @@ using Sandbox.Graphics.GUI;
 using VRage.Game;
 using VRage.Utils;
 using VRageMath;
-using static SEPlugin.DeviceManager;
 
-namespace SEPlugin
+
+namespace SEHotasPlugin
 {
     public static class OptionsPage
     {
@@ -87,21 +87,28 @@ namespace SEPlugin
                         instance.Controls.Add(label);
 
                         int captureIndex = i; // closure safety
+
+                        string actionKey = page[i].Replace(" ", "");
+                        string existingBinding = Binder.GetBoundButton(actionKey);
+                        string buttonText = string.IsNullOrEmpty(existingBinding) ? "Not Bound" : existingBinding;
+
+
                         var bindingButton = new MyGuiControlButton(
                             position: centerOrigin + rowDelta,
                             visualStyle: MyGuiControlButtonStyleEnum.ControlSetting,
                             size: new Vector2(0.05f, 0.01f),
-                            text: new StringBuilder("Not Bound"),
+                            text: new StringBuilder(buttonText),
                             textScale: 0.4f,
                             onButtonClick: (btn) =>
                             {
-                                InputCapture.StartCapture((device, capturedButton) =>
+                                DeviceManager.InputCapture.StartCapture((device, capturedButton) =>
                                 {
                                     string deviceName = device.Information?.ProductName ?? "Unknown Device";
                                     btn.Text = capturedButton.ToString();
                                     Binder.Bind(deviceName, page[captureIndex].Replace(" ", ""), capturedButton);
                                     Binder.ExportBindingsToDesktop();
                                 });
+                                ProfileSystem.Autosave();
                             }
                         );
                         bindingButton.SetTooltip("Click to bind " + page[i] + " action");
@@ -141,7 +148,6 @@ namespace SEPlugin
 
                 ;
 
-                // Make sure controls are hidden if this isn’t the active tab
                 var controlTypeField = controlsType.GetField("m_controlType", BindingFlags.Instance | BindingFlags.NonPublic);
                 object currentTab = controlTypeField?.GetValue(instance);
                 bool isActiveTab = Equals(currentTab, keyObj);

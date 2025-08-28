@@ -2,17 +2,13 @@
 using System.Reflection;
 using Sandbox.Game.Gui;
 using Sandbox.Graphics.GUI;
-using Sandbox.Game;
 using HarmonyLib;
 using Sandbox.Game.Entities;
-using Sandbox.ModAPI;
 using VRage.Game.ModAPI;
-using VRage.Input;
-using System.IO;
 using Sandbox.Game.World;
 using VRageMath;
 
-namespace SEPlugin
+namespace SEHotasPlugin
 {
     [HarmonyPatch(typeof(MySession), "HandleInput")]
     public class HotasInputPatch
