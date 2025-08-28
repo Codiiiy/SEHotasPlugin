@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 using Sandbox.Game;
 using Sandbox.Game.Gui;
 using Sandbox.Graphics.GUI;
@@ -34,6 +32,8 @@ namespace SEPlugin
                 var controlsListObj = (System.Collections.IList)controlsList;
                 float deltaY = 0.9f;
                 var centerOrigin = (leftOrigin + rightOrigin) / 2f;
+
+                // Add label + combo
                 var deviceLabel = new MyGuiControlLabel(
                     leftOrigin + deltaY * MyGuiConstants.CONTROLS_DELTA,
                     null,
@@ -44,98 +44,113 @@ namespace SEPlugin
                     MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER
                 );
                 controlsListObj.Add(deviceLabel);
-                var controlTypeCombo = new MyGuiControlCombobox(
-                    centerOrigin + deltaY * MyGuiConstants.CONTROLS_DELTA
-                );
+                instance.Controls.Add(deviceLabel);
+
+                var controlTypeCombo = new MyGuiControlCombobox(centerOrigin + deltaY * MyGuiConstants.CONTROLS_DELTA);
                 controlTypeCombo.AddItem(0, "Movement");
                 controlTypeCombo.AddItem(1, "Systems");
                 controlTypeCombo.AddItem(2, "Toolbars");
                 controlTypeCombo.AddItem(3, "Toolbars Pages");
-                controlTypeCombo.AddItem(4, "Miscellanous");
+                controlTypeCombo.AddItem(4, "Miscellaneous");
                 controlTypeCombo.SelectItemByKey(0);
                 controlsListObj.Add(controlTypeCombo);
-                deltaY += 2f;
-                string[] selectedPage = movementNames;
-                long selectedId = controlTypeCombo.GetSelectedKey();
-                switch (selectedId)
+                instance.Controls.Add(controlTypeCombo);
+
+                // helper to build rows dynamically
+                void RebuildRows(string[] page)
                 {
-                    case 0:
-                        selectedPage = movementNames;
-                        break;
-                    case 1:
-                        selectedPage = systemsNames;
-                        break;
-                    case 2:
-                        selectedPage = toolbarsNames;
-                        break;
-                    case 3:
-                        selectedPage = toolbarPagesNames;
-                        break;
-                    case 4:
-                        selectedPage = miscellaneousNames;
-                        break;
-                    default:
-                        selectedPage = movementNames;
-                        break;
-                }
-
-                for (int i = 0; i < selectedPage.Length; i++)
-                {
-                    var rowDelta = MyGuiConstants.CONTROLS_DELTA * (i + 1.85f);
-
-                    var label = new MyGuiControlLabel(
-                        leftOrigin + rowDelta,
-                        null,
-                        selectedPage[i] + ":",
-                        null,
-                        0.8f,
-                        "White",
-                        MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER
-                    );
-                    controlsListObj.Add(label);
-
-                    var bindingButton = new MyGuiControlButton(
-                        position: centerOrigin + rowDelta,
-                        visualStyle: MyGuiControlButtonStyleEnum.ControlSetting,
-                        size: new Vector2(0.05f, 0.01f),
-                        text: new StringBuilder("Not Bound"),
-                        textScale: 0.4f,
-                        onButtonClick: (btn) =>
+                    // remove old rows
+                    for (int i = controlsListObj.Count - 1; i >= 0; i--)
+                    {
+                        if (controlsListObj[i] is MyGuiControlLabel || controlsListObj[i] is MyGuiControlButton)
                         {
-                            InputCapture.StartCapture((device, capturedButton) =>
-                            {
-                                string deviceName = device.Information?.ProductName ?? "Unknown Device";
-                                btn.Text = capturedButton.ToString();
-                                Binder.Bind(deviceName, selectedPage[i].Replace(" ", ""), capturedButton); 
-                                Binder.ExportBindingsToDesktop();
-                            });
+                            instance.Controls.Remove((MyGuiControlBase)controlsListObj[i]);
+                            controlsListObj.RemoveAt(i);
                         }
-                    );
-                    bindingButton.SetTooltip("Click to bind " + selectedPage[i] + " action");
-                    controlsListObj.Add(bindingButton);
+                    }
 
-                    var clearButton = new MyGuiControlButton(
-                        centerOrigin + new Vector2(0.15f, 0f) + rowDelta,
-                        MyGuiControlButtonStyleEnum.Close,
-                        new Vector2(0.04f, 0.04f),
-                        null,
-                        MyGuiDrawAlignEnum.HORISONTAL_CENTER_AND_VERTICAL_CENTER,
-                        null,
-                        null,
-                        0.8f
-                    );
-                    clearButton.SetTooltip("Clear " + selectedPage[i] + " binding");
-                    controlsListObj.Add(clearButton);
+                    // add new rows
+                    for (int i = 0; i < page.Length; i++)
+                    {
+                        var rowDelta = MyGuiConstants.CONTROLS_DELTA * (i + 1.85f);
+
+                        var label = new MyGuiControlLabel(
+                            leftOrigin + rowDelta,
+                            null,
+                            page[i] + ":",
+                            null,
+                            0.8f,
+                            "White",
+                            MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER
+                        );
+                        controlsListObj.Add(label);
+                        instance.Controls.Add(label);
+
+                        int captureIndex = i; // closure safety
+                        var bindingButton = new MyGuiControlButton(
+                            position: centerOrigin + rowDelta,
+                            visualStyle: MyGuiControlButtonStyleEnum.ControlSetting,
+                            size: new Vector2(0.05f, 0.01f),
+                            text: new StringBuilder("Not Bound"),
+                            textScale: 0.4f,
+                            onButtonClick: (btn) =>
+                            {
+                                InputCapture.StartCapture((device, capturedButton) =>
+                                {
+                                    string deviceName = device.Information?.ProductName ?? "Unknown Device";
+                                    btn.Text = capturedButton.ToString();
+                                    Binder.Bind(deviceName, page[captureIndex].Replace(" ", ""), capturedButton);
+                                    Binder.ExportBindingsToDesktop();
+                                });
+                            }
+                        );
+                        bindingButton.SetTooltip("Click to bind " + page[i] + " action");
+                        controlsListObj.Add(bindingButton);
+                        instance.Controls.Add(bindingButton);
+
+                        var clearButton = new MyGuiControlButton(
+                            centerOrigin + new Vector2(0.15f, 0f) + rowDelta,
+                            MyGuiControlButtonStyleEnum.Close,
+                            new Vector2(0.04f, 0.04f)
+                        );
+                        clearButton.SetTooltip("Clear " + page[i] + " binding");
+                        controlsListObj.Add(clearButton);
+                        instance.Controls.Add(clearButton);
+                    }
                 }
 
+                // Initial build
+                RebuildRows(movementNames);
 
-                foreach (MyGuiControlBase control in controlsListObj)
+                // Combo change event
+                controlTypeCombo.ItemSelected += () =>
                 {
-                    control.Visible = false;
-                    instance.Controls.Add(control);
+                    string[] newPage;
+                    long selectedId = controlTypeCombo.GetSelectedKey();
+                    switch (selectedId)
+                    {
+                        case 0: newPage = movementNames; break;
+                        case 1: newPage = systemsNames; break;
+                        case 2: newPage = toolbarsNames; break;
+                        case 3: newPage = toolbarPagesNames; break;
+                        case 4: newPage = miscellaneousNames; break;
+                        default: newPage = movementNames; break;
+                    }
+                    RebuildRows(newPage);
+                }
+
+                ;
+
+                // Make sure controls are hidden if this isn’t the active tab
+                var controlTypeField = controlsType.GetField("m_controlType", BindingFlags.Instance | BindingFlags.NonPublic);
+                object currentTab = controlTypeField?.GetValue(instance);
+                bool isActiveTab = Equals(currentTab, keyObj);
+
+                foreach (MyGuiControlBase c in controlsListObj)
+                {
+                    c.Visible = isActiveTab;
                 }
             }
         }
     }
 }
-
