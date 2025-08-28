@@ -1,21 +1,19 @@
-﻿using Sandbox.Graphics.GUI;
-using SharpDX;
+﻿using Newtonsoft.Json;
 using SharpDX.DirectInput;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using VRageMath;
 
-namespace SEPlugin
+
+namespace SEHotasPlugin
 {
     public static class Binder
     {
         private static readonly Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>> _bindings =
             new Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>>();
+
         public static Dictionary<string, float> AxisSensitivity = new Dictionary<string, float>()
         {
-
             { "RotateLeft",   1.0f },
             { "RotateRight",  1.0f },
             { "RotateUp",     1.0f },
@@ -87,6 +85,7 @@ namespace SEPlugin
         {
             devices = DetectDevices();
             AcquireDevices(devices);
+            LoadAutosave();
         }
 
         public static List<Joystick> DetectDevices()
@@ -169,7 +168,53 @@ namespace SEPlugin
                 }
                 catch { }
             }
+
         }
+        public static void LoadAutosave()
+        {
+            string profilePath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "SpaceEngineers",
+                "Plugins",
+                "SEHotasPlugin",
+                "Profiles",
+                "Autosave.json"
+            );
+
+            if (!File.Exists(profilePath))
+                return; 
+
+            var json = File.ReadAllText(profilePath);
+            var profileData = JsonConvert.DeserializeObject<ProfileSystem.SerializableProfile>(json);
+            if (profileData == null) return;
+
+ 
+            typeof(Binder)
+                .GetField("_bindings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                ?.SetValue(null, new Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>>());
+
+            foreach (var devicePair in profileData.Bindings)
+            {
+                bool deviceConnected = false;
+                foreach (var dev in DeviceManager.Devices)
+                {
+                    if (dev.Information.InstanceName == devicePair.Key)
+                    {
+                        deviceConnected = true;
+                        break;
+                    }
+                }
+
+                if (!deviceConnected) continue;
+
+                foreach (var actionPair in devicePair.Value)
+                {
+                    Binder.Bind(devicePair.Key, actionPair.Key, new DeviceManager.DeviceButton(actionPair.Value));
+                }
+            }
+            Binder.AxisSensitivity = profileData.AxisSensitivity ?? new Dictionary<string, float>();
+        }
+
 
         public static class InputCapture
         {

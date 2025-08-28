@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using Sandbox.Game.Entities;
 
 
-namespace SEPlugin
+namespace SEHotasPlugin
 {
     public class MyPlugin : IPlugin
     {
