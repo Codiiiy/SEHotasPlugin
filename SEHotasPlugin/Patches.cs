@@ -15,35 +15,57 @@ namespace SEHotasPlugin
     {
         static void Postfix(MySession __instance)
         {
-            var controller = __instance.ControlledEntity as MyShipController;
+            MyShipController controller = __instance.ControlledEntity as MyShipController;
             if (controller == null) return;
 
-            if (Debug.debugMode)
-            {
-                Debug.LogToDesktop("Bind checking) " + Binder.GetBoundButton("RotateLeft") + " Value: " + DeviceManager.GetInputValue("RotateLeft"));
-                Binder.ExportBindingsToDesktop();
-            }
+            const float deadzone = 0.15f;        // minimum axis magnitude to consider "joystick active"
+            const float upDownScale = 3f;        // keep your original vertical scaling
+            float deadzoneSq = deadzone * deadzone;
 
-            Vector3 move = new Vector3(
-                DeviceManager.GetRawInputValue("StrafeRight") - DeviceManager.GetRawInputValue("StrafeLeft"),  // strafe left(-)/right(+)
-                (DeviceManager.GetRawInputValue("Up") - DeviceManager.GetRawInputValue("Down")) * 3f,                // up(+)/down(-)
-                -((DeviceManager.GetRawInputValue("Forward") - DeviceManager.GetRawInputValue("Backward")))        // forward(+)/backward(-)
-            );
+            float strafe = InputLogger.GetRawInputValue("StrafeRight") - InputLogger.GetRawInputValue("StrafeLeft");
+            float updown = (InputLogger.GetRawInputValue("Up") - InputLogger.GetRawInputValue("Down")) * upDownScale;
+            float forward = -(InputLogger.GetRawInputValue("Forward") - InputLogger.GetRawInputValue("Backward"));
 
-            Vector2 rotation = new Vector2(
-                -(DeviceManager.GetRawInputValue("RotateUp") - DeviceManager.GetRawInputValue("RotateDown")),  // Invert pitch
-                   -(DeviceManager.GetRawInputValue("RotateLeft") - DeviceManager.GetRawInputValue("RotateRight")) // Invert yaw
-);
+            // NOTE: using fields/properties X,Y,Z because not all Vector3 types expose .sqrMagnitude
+            var hotasMove = new Vector3(strafe, updown, forward);
 
-            float roll = -(DeviceManager.GetRawInputValue("RollLeft") - DeviceManager.GetRawInputValue("RollRight")); // Invert roll
+            float pitch = -(InputLogger.GetRawInputValue("RotateUp") - InputLogger.GetRawInputValue("RotateDown"));
+            float yaw = -(InputLogger.GetRawInputValue("RotateLeft") - InputLogger.GetRawInputValue("RotateRight"));
+            var hotasRotation = new Vector2(pitch, yaw);
 
-            controller.MoveAndRotate(move, rotation, roll);
+            float hotasRoll = -(InputLogger.GetRawInputValue("RollLeft") - InputLogger.GetRawInputValue("RollRight"));
+
+            // portable squared-magnitude calculations (works regardless of Vector* implementation)
+            float moveSq = hotasMove.X * hotasMove.X + hotasMove.Y * hotasMove.Y + hotasMove.Z * hotasMove.Z;
+            float rotSq = hotasRotation.X * hotasRotation.X + hotasRotation.Y * hotasRotation.Y;
+
+            var fireBinding = Binder.GetBinding("Fire");
+            bool hotasButtonPressed = fireBinding != null && InputLogger.IsButtonPressed(fireBinding.ButtonName);
 
             var fire = Binder.GetBinding("Fire");
-            if (fire != null && DeviceManager.InputLogger.IsButtonPressed(fire.ButtonName))
+
+            Debug.LogToDesktop("Binding in patch" + fire);
+            if (fire != null && InputLogger.IsButtonPressed(fire.ButtonName))
+            {
+                Debug.LogToDesktop("Pressed" + InputLogger.IsButtonPressed(fire.ButtonName));
                 controller.Shoot(MyShootActionEnum.PrimaryAction);
+            }
+
+            bool hotasAxisActive = (moveSq >= deadzoneSq) || (rotSq >= deadzoneSq) || (System.Math.Abs(hotasRoll) >= deadzone);
+
+            if (!hotasAxisActive && !hotasButtonPressed)
+                return;
+
+            controller.MoveAndRotate(hotasMove, hotasRotation, hotasRoll);
+
+            if (fireBinding != null && InputLogger.IsButtonPressed(fireBinding.ButtonName))
+                controller.Shoot(MyShootActionEnum.PrimaryAction);
+
+            if (Debug.debugMode)
+                Debug.LogToDesktop($"[HotasInputPatch] HOTAS active. Move={hotasMove}, Rot={hotasRotation}, Roll={hotasRoll}");
         }
     }
+
 
 
     public static class PluginPatch

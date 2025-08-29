@@ -27,8 +27,7 @@ namespace SEHotasPlugin
 
         public void Update()
         {
-            DeviceManager.InputCapture.Update();
-            DeviceManager.LogInputsToDesktop();
+            InputBinding.Update();
         }
         public void UpdateBeforeSimulation()
         {

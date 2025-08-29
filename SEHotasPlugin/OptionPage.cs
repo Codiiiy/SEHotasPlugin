@@ -21,7 +21,7 @@ namespace SEHotasPlugin
             var rightOriginField = controlsType.GetField("m_controlsOriginRight", BindingFlags.Instance | BindingFlags.NonPublic);
 
             string[] movementNames = { "Forward", "Backward", "Strafe Left", "Strafe Right", "Rotate Left", "Rotate Right", "Rotate Up", "Rotate Down", "Roll Left", "Roll Right", "Up", "Down" };
-            string[] systemsNames = { "Fire/Use tool", "Secondary mode", "Reload", "Dampeners", "Relative Dampeners", "Broadcasting", "Lights", "Terminal" };
+            string[] systemsNames = { "Fire", "Secondary mode", "Reload", "Dampeners", "Relative Dampeners", "Broadcasting", "Lights", "Terminal" };
             string[] toolbarsNames = { "Next toolbar item", "Previous toolbar item", "Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Unequip" };
             string[] toolbarPagesNames = { "Next toolbar", "Previous toolbar", "Page 1", "Page 2", "Page 3", "Page 4", "Page 5", "Page 6", "Page 7", "Page 8", "Page 9", "Page 0" };
             string[] miscellaneousNames = { "Previous Camera", "Next Camera", "Park", "Local power switch" };
@@ -99,7 +99,7 @@ namespace SEHotasPlugin
                             textScale: 0.4f,
                             onButtonClick: (btn) =>
                             {
-                                DeviceManager.InputCapture.StartCapture((device, capturedButton) =>
+                                InputBinding.StartCapture((device, capturedButton) =>
                                 {
                                     string deviceName = device.Information?.ProductName ?? "Unknown Device";
                                     btn.Text = capturedButton.ToString();
