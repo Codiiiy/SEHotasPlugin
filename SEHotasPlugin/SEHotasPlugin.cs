@@ -1,9 +1,7 @@
 ﻿using VRage.Plugins;
 using HarmonyLib;
 using System.Reflection;
-using SharpDX.DirectInput;
-using System.Collections.Generic;
-using Sandbox.Game.Entities;
+
 
 
 namespace SEHotasPlugin
@@ -27,7 +25,10 @@ namespace SEHotasPlugin
 
         public void Update()
         {
-            InputBinding.Update();
+            if(OptionsPage.inputCapture)
+            {
+                InputLogger.UpdateCapture();
+            }
         }
         public void UpdateBeforeSimulation()
         {

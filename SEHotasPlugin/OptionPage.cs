@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Sandbox.Game;
 using Sandbox.Game.Gui;
@@ -14,17 +15,18 @@ namespace SEHotasPlugin
 {
     public static class OptionsPage
     {
+        public static bool inputCapture = false;
         public static void AddHotasPageContent(MyGuiScreenOptionsControls instance, object controlsList, object keyObj)
         {
+
             var controlsType = typeof(MyGuiScreenOptionsControls);
             var leftOriginField = controlsType.GetField("m_controlsOriginLeft", BindingFlags.Instance | BindingFlags.NonPublic);
             var rightOriginField = controlsType.GetField("m_controlsOriginRight", BindingFlags.Instance | BindingFlags.NonPublic);
 
             string[] movementNames = { "Forward", "Backward", "Strafe Left", "Strafe Right", "Rotate Left", "Rotate Right", "Rotate Up", "Rotate Down", "Roll Left", "Roll Right", "Up", "Down" };
-            string[] systemsNames = { "Fire", "Secondary mode", "Reload", "Dampeners", "Relative Dampeners", "Broadcasting", "Lights", "Terminal" };
-            string[] toolbarsNames = { "Next toolbar item", "Previous toolbar item", "Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Unequip" };
-            string[] toolbarPagesNames = { "Next toolbar", "Previous toolbar", "Page 1", "Page 2", "Page 3", "Page 4", "Page 5", "Page 6", "Page 7", "Page 8", "Page 9", "Page 0" };
-            string[] miscellaneousNames = { "Previous Camera", "Next Camera", "Park", "Local power switch" };
+            string[] systemsNames = { "Fire", "Secondary mode", "Dampeners", "Broadcasting", "Lights", "Terminal", "Park", "Local power switch" };
+            string[] toolbarsNames = { "Next toolbar item", "Previous toolbar item", "Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9"};
+            string[] toolbarPagesNames = { "Next toolbar", "Previous toolbar", "Page 1", "Page 2", "Page 3", "Page 4", "Page 5", "Page 6", "Page 7", "Page 8", "Page 9" };
 
             if (leftOriginField?.GetValue(instance) is Vector2 leftOrigin &&
                 rightOriginField?.GetValue(instance) is Vector2 rightOrigin)
@@ -99,14 +101,18 @@ namespace SEHotasPlugin
                             textScale: 0.4f,
                             onButtonClick: (btn) =>
                             {
-                                InputBinding.StartCapture((device, capturedButton) =>
+                                inputCapture = true;
+                                InputLogger.StartCapture((device, capturedButton) =>
                                 {
+
                                     string deviceName = device.Information?.ProductName ?? "Unknown Device";
                                     btn.Text = capturedButton.ToString();
                                     Binder.Bind(deviceName, page[captureIndex].Replace(" ", ""), capturedButton);
                                     Binder.ExportBindingsToDesktop();
+                                    ProfileSystem.Autosave();
+                                    inputCapture = false;
                                 });
-                                ProfileSystem.Autosave();
+
                             }
                         );
                         bindingButton.SetTooltip("Click to bind " + page[i] + " action");
@@ -136,7 +142,6 @@ namespace SEHotasPlugin
                         case 1: newPage = systemsNames; break;
                         case 2: newPage = toolbarsNames; break;
                         case 3: newPage = toolbarPagesNames; break;
-                        case 4: newPage = miscellaneousNames; break;
                         default: newPage = movementNames; break;
                     }
                     RebuildRows(newPage);

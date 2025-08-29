@@ -16,10 +16,33 @@ namespace SEHotasPlugin
         static void Postfix(MySession __instance)
         {
             MyShipController controller = __instance.ControlledEntity as MyShipController;
+            MyCockpit cockpit = controller as MyCockpit;
             if (controller == null) return;
 
-            const float deadzone = 0.15f;        
-            const float upDownScale = 3f;      
+            var primaryBinding = Binder.GetBinding("Fire");
+            var secondaryBinding = Binder.GetBinding("Secondarymode");
+            var dampenerBinding = Binder.GetBinding("Dampeners");
+            var broadcastingBinding = Binder.GetBinding("Broadcasting");
+            var lightsBinding = Binder.GetBinding("Lights");
+            var terminalBinding = Binder.GetBinding("Terminal");
+            var parkBinding = Binder.GetBinding("Park");
+            var powerBinding = Binder.GetBinding("Localpowerswitch");
+            var nextToolbarBinding = Binder.GetBinding("Nexttoolbar");
+            var prevToolbarBinding = Binder.GetBinding("Previoustoolbar");
+            var nextToolitemBinding = Binder.GetBinding("Nexttoolbaritem");
+            var prevToolitemBinding = Binder.GetBinding("Previoustoolbaritem");
+
+            DeviceManager.DeviceButton[] itemBinding = new DeviceManager.DeviceButton[9];
+            DeviceManager.DeviceButton[] pageBinding = new DeviceManager.DeviceButton[9];
+
+            for (int i = 0; i <= 8; i++)
+            {
+                itemBinding[i] = Binder.GetBinding("Item " + (i + 1));
+                pageBinding[i] = Binder.GetBinding("Page " + (i + 1));
+            }
+
+            const float deadzone = 0.15f;
+            const float upDownScale = 3f;
             float deadzoneSq = deadzone * deadzone;
 
             float strafe = InputLogger.GetRawInputValue("StrafeRight") - InputLogger.GetRawInputValue("StrafeLeft");
@@ -32,71 +55,76 @@ namespace SEHotasPlugin
             float pitch = -(InputLogger.GetRawInputValue("RotateUp") - InputLogger.GetRawInputValue("RotateDown"));
             float yaw = -(InputLogger.GetRawInputValue("RotateLeft") - InputLogger.GetRawInputValue("RotateRight"));
             var hotasRotation = new Vector2(pitch, yaw);
-
+            Debug.LogToDesktop("Pitch: " + pitch + "Yaw: " + yaw);
             float hotasRoll = -(InputLogger.GetRawInputValue("RollLeft") - InputLogger.GetRawInputValue("RollRight"));
 
 
             float moveSq = hotasMove.X * hotasMove.X + hotasMove.Y * hotasMove.Y + hotasMove.Z * hotasMove.Z;
             float rotSq = hotasRotation.X * hotasRotation.X + hotasRotation.Y * hotasRotation.Y;
 
-            var fireBinding = Binder.GetBinding("Fire");
-            bool hotasButtonPressed = fireBinding != null && InputLogger.IsButtonPressed(fireBinding.ButtonName);
-
-            var fire = Binder.GetBinding("Fire");
-
-            Debug.LogToDesktop("Binding in patch" + fire);
-            if (fire != null && InputLogger.IsButtonPressed(fire.ButtonName))
+            bool hotasAxisActive = (moveSq >= deadzoneSq) || (rotSq >= deadzoneSq) || (System.Math.Abs(hotasRoll) >= deadzone);
+            if (hotasAxisActive)
             {
-                Debug.LogToDesktop("Pressed" + InputLogger.IsButtonPressed(fire.ButtonName));
-                controller.Shoot(MyShootActionEnum.PrimaryAction);
+                controller.MoveAndRotate(hotasMove, hotasRotation, hotasRoll);
             }
 
-            bool hotasAxisActive = (moveSq >= deadzoneSq) || (rotSq >= deadzoneSq) || (System.Math.Abs(hotasRoll) >= deadzone);
-
-            if (!hotasAxisActive && !hotasButtonPressed)
-                return;
-
-            controller.MoveAndRotate(hotasMove, hotasRotation, hotasRoll);
-
-            if (fireBinding != null && InputLogger.IsButtonPressed(fireBinding.ButtonName))
+            if (primaryBinding != null && InputLogger.IsButtonPressed(primaryBinding.ButtonName))
                 controller.Shoot(MyShootActionEnum.PrimaryAction);
+            if (secondaryBinding != null && InputLogger.IsButtonPressed(secondaryBinding.ButtonName))
+                controller.Shoot(MyShootActionEnum.SecondaryAction);
 
-            if (Debug.debugMode)
-                Debug.LogToDesktop($"[HotasInputPatch] HOTAS active. Move={hotasMove}, Rot={hotasRotation}, Roll={hotasRoll}");
+            InputLogger.HandleToggleButton(dampenerBinding, () => controller.SwitchDamping());
+            InputLogger.HandleToggleButton(broadcastingBinding, () => controller.SwitchBroadcasting());
+            InputLogger.HandleToggleButton(lightsBinding, () => controller.SwitchLights());
+            InputLogger.HandleToggleButton(terminalBinding, () => controller.ShowTerminal());
+            InputLogger.HandleToggleButton(parkBinding, () => controller.SwitchParkedStatus());
+            InputLogger.HandleToggleButton(powerBinding, () => controller.SwitchReactorsLocal());
+            if (cockpit != null)
+            {
+                InputLogger.HandleToggleButton(nextToolbarBinding, () => cockpit.Toolbar.PageUp());
+                InputLogger.HandleToggleButton(prevToolbarBinding, () => cockpit.Toolbar.PageDown());
+
+                for (int i = 0; i <= 8; i++)
+                {
+                    int index = i;
+                    InputLogger.HandleToggleButton(pageBinding[i], () => cockpit.Toolbar.SwitchToPage(index));
+                    InputLogger.HandleToggleButton(itemBinding[i], () => cockpit.Toolbar.ActivateItemAtSlot(index));
+                }
+            }
         }
+
     }
 
-
-
-    public static class PluginPatch
-    {
-        internal static void RecreateControlsPostfix(MyGuiScreenOptionsControls __instance)
+        public static class PluginPatch
         {
-            var controlsType = typeof(MyGuiScreenOptionsControls);
-
-            var controlListField = controlsType.GetField("m_controlTypeList", BindingFlags.Instance | BindingFlags.NonPublic);
-            if (controlListField?.GetValue(__instance) is MyGuiControlCombobox combo)
+            internal static void RecreateControlsPostfix(MyGuiScreenOptionsControls __instance)
             {
-                combo.AddItem(12L, "Joystick", null, null);
-            }
+                var controlsType = typeof(MyGuiScreenOptionsControls);
 
-            var allControlsField = controlsType.GetField("m_allControls", BindingFlags.Instance | BindingFlags.NonPublic);
-            if (allControlsField?.GetValue(__instance) is System.Collections.IDictionary dict)
-            {
-                var dictType = dict.GetType();
-                var valueType = dictType.GetGenericArguments()[1];
-                var keyEnumType = dictType.GetGenericArguments()[0];
-
-                object keyObj = Enum.ToObject(keyEnumType, 12);
-
-                if (!dict.Contains(keyObj))
+                var controlListField = controlsType.GetField("m_controlTypeList", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (controlListField?.GetValue(__instance) is MyGuiControlCombobox combo)
                 {
-                    var listInstance = Activator.CreateInstance(valueType);
-                    dict.Add(keyObj, listInstance);
-                    OptionsPage.AddHotasPageContent(__instance, listInstance, keyObj);
+                    combo.AddItem(12L, "Joystick", null, null);
+                }
+
+                var allControlsField = controlsType.GetField("m_allControls", BindingFlags.Instance | BindingFlags.NonPublic);
+                if (allControlsField?.GetValue(__instance) is System.Collections.IDictionary dict)
+                {
+                    var dictType = dict.GetType();
+                    var valueType = dictType.GetGenericArguments()[1];
+                    var keyEnumType = dictType.GetGenericArguments()[0];
+
+                    object keyObj = Enum.ToObject(keyEnumType, 12);
+
+                    if (!dict.Contains(keyObj))
+                    {
+                        var listInstance = Activator.CreateInstance(valueType);
+                        dict.Add(keyObj, listInstance);
+                        OptionsPage.AddHotasPageContent(__instance, listInstance, keyObj);
+                    }
                 }
             }
         }
     }
-}
+
 
