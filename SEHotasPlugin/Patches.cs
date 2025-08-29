@@ -18,15 +18,15 @@ namespace SEHotasPlugin
             MyShipController controller = __instance.ControlledEntity as MyShipController;
             if (controller == null) return;
 
-            const float deadzone = 0.15f;        // minimum axis magnitude to consider "joystick active"
-            const float upDownScale = 3f;        // keep your original vertical scaling
+            const float deadzone = 0.15f;        
+            const float upDownScale = 3f;      
             float deadzoneSq = deadzone * deadzone;
 
             float strafe = InputLogger.GetRawInputValue("StrafeRight") - InputLogger.GetRawInputValue("StrafeLeft");
             float updown = (InputLogger.GetRawInputValue("Up") - InputLogger.GetRawInputValue("Down")) * upDownScale;
             float forward = -(InputLogger.GetRawInputValue("Forward") - InputLogger.GetRawInputValue("Backward"));
 
-            // NOTE: using fields/properties X,Y,Z because not all Vector3 types expose .sqrMagnitude
+
             var hotasMove = new Vector3(strafe, updown, forward);
 
             float pitch = -(InputLogger.GetRawInputValue("RotateUp") - InputLogger.GetRawInputValue("RotateDown"));
@@ -35,7 +35,7 @@ namespace SEHotasPlugin
 
             float hotasRoll = -(InputLogger.GetRawInputValue("RollLeft") - InputLogger.GetRawInputValue("RollRight"));
 
-            // portable squared-magnitude calculations (works regardless of Vector* implementation)
+
             float moveSq = hotasMove.X * hotasMove.X + hotasMove.Y * hotasMove.Y + hotasMove.Z * hotasMove.Z;
             float rotSq = hotasRotation.X * hotasRotation.X + hotasRotation.Y * hotasRotation.Y;
 
