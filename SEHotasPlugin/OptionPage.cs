@@ -23,7 +23,7 @@ namespace SEHotasPlugin
             var leftOriginField = controlsType.GetField("m_controlsOriginLeft", BindingFlags.Instance | BindingFlags.NonPublic);
             var rightOriginField = controlsType.GetField("m_controlsOriginRight", BindingFlags.Instance | BindingFlags.NonPublic);
 
-            string[] movementNames = { "Forward", "Backward", "Strafe Left", "Strafe Right", "Rotate Left", "Rotate Right", "Rotate Up", "Rotate Down", "Roll Left", "Roll Right", "Up", "Down" };
+            string[] movementNames = { "Forward", "BackwardToggle", "Strafe Left", "Strafe Right", "Rotate Left", "Rotate Right", "Rotate Up", "Rotate Down", "Roll Left", "Roll Right", "Up", "Down" };
             string[] systemsNames = { "Fire", "Secondary mode", "Dampeners", "Broadcasting", "Lights", "Terminal", "Park", "Local power switch" };
             string[] toolbarsNames = { "Next toolbar item", "Previous toolbar item", "Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9"};
             string[] toolbarPagesNames = { "Next toolbar", "Previous toolbar", "Page 1", "Page 2", "Page 3", "Page 4", "Page 5", "Page 6", "Page 7", "Page 8", "Page 9" };

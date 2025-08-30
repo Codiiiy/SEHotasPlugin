@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace SEHotasPlugin
 {
@@ -26,7 +24,6 @@ namespace SEHotasPlugin
         {
             if (!_bindings.ContainsKey(deviceName))
                 _bindings[deviceName] = new Dictionary<string, DeviceManager.DeviceButton>();
-
             _bindings[deviceName][actionName] = deviceButton;
         }
 
@@ -35,21 +32,36 @@ namespace SEHotasPlugin
             foreach (var deviceBindings in _bindings.Values)
                 if (deviceBindings.ContainsKey(actionName))
                     return deviceBindings[actionName];
-
             return null;
         }
+
+        public static string GetDeviceForAction(string actionName)
+        {
+            foreach (var devicePair in _bindings)
+            {
+                if (devicePair.Value.ContainsKey(actionName))
+                    return devicePair.Key;
+            }
+            return null;
+        }
+
+
+        public static bool IsDeviceConnected(string deviceName)
+        {
+            return DeviceManager.Devices.Any(d => d.Information.InstanceName == deviceName);
+        }
+
         public static string GetBoundButton(string actionName)
         {
             var binding = GetBinding(actionName);
             return binding?.ButtonName;
-
         }
+
 
         public static void ExportBindingsToDesktop()
         {
             string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
             string filePath = Path.Combine(desktopPath, "Bindings.txt");
-
             using (StreamWriter writer = new StreamWriter(filePath))
             {
                 foreach (var device in _bindings)
@@ -64,5 +76,4 @@ namespace SEHotasPlugin
             Console.WriteLine($"Bindings exported to {filePath}");
         }
     }
-
 }

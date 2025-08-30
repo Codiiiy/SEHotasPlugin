@@ -60,9 +60,15 @@ namespace SEHotasPlugin
                 const float upDownScale = 3f;
                 float deadzoneSq = deadzone * deadzone;
 
-                float strafe = InputLogger.GetRawInputValue("StrafeRight") - InputLogger.GetRawInputValue("StrafeLeft");
-                float updown = (InputLogger.GetRawInputValue("Up") - InputLogger.GetRawInputValue("Down")) * upDownScale;
+                          
                 float forward = -(InputLogger.GetRawInputValue("Forward") - InputLogger.GetRawInputValue("Backward"));
+                if (forward == 0)
+                {
+
+                }
+                float updown = (InputLogger.GetRawInputValue("Up") - InputLogger.GetRawInputValue("Down")) * upDownScale;
+                float strafe = InputLogger.GetRawInputValue("StrafeRight") - InputLogger.GetRawInputValue("StrafeLeft");
+
 
                 const float RotateScale = 20f;
                 var hotasMove = new Vector3(strafe, updown, forward);
