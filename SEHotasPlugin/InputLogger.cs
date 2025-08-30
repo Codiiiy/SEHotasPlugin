@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Policy;
 using SharpDX.DirectInput;
 
 namespace SEHotasPlugin
@@ -8,6 +9,7 @@ namespace SEHotasPlugin
     public static class InputLogger
     {
         public static float Deadzone = 0.3f;
+        public static bool reverseToggled = false;
         private const float ButtonAxisThreshold = 0.5f;
         private static bool _isCapturing = false;
         private static Action<Joystick, DeviceManager.DeviceButton> _onCaptured;
@@ -403,5 +405,6 @@ namespace SEHotasPlugin
             }
             catch { }
         }
+        public static void ToggleReverse() { reverseToggled = !reverseToggled; }
     }
 }

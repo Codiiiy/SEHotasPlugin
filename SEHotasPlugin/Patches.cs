@@ -38,7 +38,7 @@ namespace SEHotasPlugin
                 var prevToolbarBinding = Binder.GetBinding("Previoustoolbar");
                 var nextToolitemBinding = Binder.GetBinding("Nexttoolbaritem");
                 var prevToolitemBinding = Binder.GetBinding("Previoustoolbaritem");
-
+                var reverseToggle = Binder.GetBinding("BackwardToggle");
                 DeviceManager.DeviceButton[] itemBinding = new DeviceManager.DeviceButton[9];
                 DeviceManager.DeviceButton[] pageBinding = new DeviceManager.DeviceButton[9];
 
@@ -57,24 +57,26 @@ namespace SEHotasPlugin
                 }
 
                 const float deadzone = 0.15f;
-                const float upDownScale = 3f;
+                float MoveScale = 20f;
                 float deadzoneSq = deadzone * deadzone;
 
-                          
-                float forward = -(InputLogger.GetRawInputValue("Forward") - InputLogger.GetRawInputValue("Backward"));
-                if (forward == 0)
+                InputLogger.HandleToggleButton(reverseToggle, () => InputLogger.ToggleReverse());
+                float forward = -InputLogger.GetRawInputValue("Forward");
+                if (forward != 0)
                 {
-
+                    MoveScale = 1f;
                 }
-                float updown = (InputLogger.GetRawInputValue("Up") - InputLogger.GetRawInputValue("Down")) * upDownScale;
+                if (InputLogger.reverseToggled)
+                {
+                    forward *= -1f;
+                }
+                float updown = (InputLogger.GetRawInputValue("Up") - InputLogger.GetRawInputValue("Down")) * MoveScale;
                 float strafe = InputLogger.GetRawInputValue("StrafeRight") - InputLogger.GetRawInputValue("StrafeLeft");
 
-
-                const float RotateScale = 20f;
                 var hotasMove = new Vector3(strafe, updown, forward);
 
-                float pitch = -(InputLogger.GetRawInputValue("RotateUp") - InputLogger.GetRawInputValue("RotateDown")) * RotateScale;
-                float yaw = -(InputLogger.GetRawInputValue("RotateLeft") - InputLogger.GetRawInputValue("RotateRight")) * RotateScale;
+                float pitch = -(InputLogger.GetRawInputValue("RotateUp") - InputLogger.GetRawInputValue("RotateDown")) * MoveScale;
+                float yaw = -(InputLogger.GetRawInputValue("RotateLeft") - InputLogger.GetRawInputValue("RotateRight")) * MoveScale;
                 var hotasRotation = new Vector2(pitch, yaw);
                 float hotasRoll = -(InputLogger.GetRawInputValue("RollLeft") - InputLogger.GetRawInputValue("RollRight"));
 
