@@ -123,7 +123,6 @@ namespace SEHotasPlugin
             return "Center";
         }
 
-        // ==== Normal InputLogger code ====
         public static bool IsButtonPressed(string buttonName)
         {
             foreach (var joystick in DeviceManager.Devices)

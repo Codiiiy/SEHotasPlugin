@@ -52,7 +52,6 @@ namespace SEHotasPlugin
                 controlTypeCombo.AddItem(1, "Systems");
                 controlTypeCombo.AddItem(2, "Toolbars");
                 controlTypeCombo.AddItem(3, "Toolbars Pages");
-                controlTypeCombo.AddItem(4, "Miscellaneous");
                 controlTypeCombo.SelectItemByKey(0);
                 controlsListObj.Add(controlTypeCombo);
                 instance.Controls.Add(controlTypeCombo);

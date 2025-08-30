@@ -1,6 +1,10 @@
 ﻿using VRage.Plugins;
 using HarmonyLib;
 using System.Reflection;
+using VRage.Input;
+using Sandbox.Game;
+using VRage.Utils;
+
 
 
 
@@ -12,6 +16,7 @@ namespace SEHotasPlugin
 
         public void Init(object gameInstance)
         {
+            MyStringId AX_BASE =  MyStringId.GetOrCompute("ABASE");
             DeviceManager.Init();
             _harmony = new Harmony("com.myseplugin.joystickmenu");
 
