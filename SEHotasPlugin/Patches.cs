@@ -7,6 +7,10 @@ using Sandbox.Game.Entities;
 using VRage.Game.ModAPI;
 using Sandbox.Game.World;
 using VRageMath;
+using Sandbox.Game.Entities.Character;
+using Sandbox.Game.EntityComponents;
+using VRage.Game.Components;
+
 
 namespace SEHotasPlugin
 {
@@ -15,38 +19,141 @@ namespace SEHotasPlugin
     {
         static void Postfix(MySession __instance)
         {
-            var controller = __instance.ControlledEntity as MyShipController;
-            if (controller == null) return;
-
-            if (Debug.debugMode)
+            try
             {
-                Debug.LogToDesktop("Bind checking) " + Binder.GetBoundButton("RotateLeft") + " Value: " + DeviceManager.GetInputValue("RotateLeft"));
-                Binder.ExportBindingsToDesktop();
+                MyShipController controller = __instance.ControlledEntity as MyShipController;
+                MyCockpit cockpit = controller as MyCockpit;
+                MyCharacter character = __instance.ControlledEntity as MyCharacter;
+                if (controller == null) return;
+
+                var primaryBinding = Binder.GetBinding("Fire");
+                var secondaryBinding = Binder.GetBinding("Secondarymode");
+                var dampenerBinding = Binder.GetBinding("Dampeners");
+                var broadcastingBinding = Binder.GetBinding("Broadcasting");
+                var lightsBinding = Binder.GetBinding("Lights");
+                var terminalBinding = Binder.GetBinding("Terminal");
+                var parkBinding = Binder.GetBinding("Park");
+                var powerBinding = Binder.GetBinding("Localpowerswitch");
+                var nextToolbarBinding = Binder.GetBinding("Nexttoolbar");
+                var prevToolbarBinding = Binder.GetBinding("Previoustoolbar");
+                var nextToolitemBinding = Binder.GetBinding("Nexttoolbaritem");
+                var prevToolitemBinding = Binder.GetBinding("Previoustoolbaritem");
+                var reverseToggle = Binder.GetBinding("BackwardToggle");
+                DeviceManager.DeviceButton[] itemBinding = new DeviceManager.DeviceButton[9];
+                DeviceManager.DeviceButton[] pageBinding = new DeviceManager.DeviceButton[9];
+
+                for (int i = 0; i <= 8; i++)
+                {
+                    itemBinding[i] = Binder.GetBinding("Item" + (i + 1));
+                    pageBinding[i] = Binder.GetBinding("Page" + (i + 1));
+                    if (itemBinding[i] != null)
+                    {
+                        Debug.LogToDesktop("Item binding " + (i + 1) + ": " + itemBinding[i].ToString());
+                    }
+                    else
+                    {
+                        Debug.LogToDesktop("Item binding " + (i + 1) + ": NULL");
+                    }
+                }
+
+                const float deadzone = 0.15f;
+                float MoveScale = 20f;
+                float deadzoneSq = deadzone * deadzone;
+
+                InputLogger.HandleToggleButton(reverseToggle, () => InputLogger.ToggleReverse());
+                float forward = -InputLogger.GetRawInputValue("Forward");
+                if (forward != 0)
+                {
+                    MoveScale = 1f;
+                }
+                if (InputLogger.reverseToggled)
+                {
+                    forward *= -1f;
+                }
+                float updown = (InputLogger.GetRawInputValue("Up") - InputLogger.GetRawInputValue("Down")) * MoveScale;
+                float strafe = InputLogger.GetRawInputValue("StrafeRight") - InputLogger.GetRawInputValue("StrafeLeft");
+
+                var hotasMove = new Vector3(strafe, updown, forward);
+
+                float pitch = -(InputLogger.GetRawInputValue("RotateUp") - InputLogger.GetRawInputValue("RotateDown")) * MoveScale;
+                float yaw = -(InputLogger.GetRawInputValue("RotateLeft") - InputLogger.GetRawInputValue("RotateRight")) * MoveScale;
+                var hotasRotation = new Vector2(pitch, yaw);
+                float hotasRoll = -(InputLogger.GetRawInputValue("RollLeft") - InputLogger.GetRawInputValue("RollRight"));
+
+                float moveSq = hotasMove.X * hotasMove.X + hotasMove.Y * hotasMove.Y + hotasMove.Z * hotasMove.Z;
+                float rotSq = hotasRotation.X * hotasRotation.X + hotasRotation.Y * hotasRotation.Y;
+
+                bool hotasAxisActive = (moveSq >= deadzoneSq) || (rotSq >= deadzoneSq) || (System.Math.Abs(hotasRoll) >= deadzone);
+                if (hotasAxisActive)
+                {
+                    controller.MoveAndRotate(hotasMove, hotasRotation, hotasRoll);
+                }
+
+                if (primaryBinding != null && InputLogger.IsButtonPressed(primaryBinding.ButtonName))
+                    controller.Shoot(MyShootActionEnum.PrimaryAction);
+
+                if (secondaryBinding != null && InputLogger.IsButtonPressed(secondaryBinding.ButtonName))
+                {
+                    InputLogger.HandleToggleButton(secondaryBinding, () => TryRequestTargetLock(character));
+                }
+
+                InputLogger.HandleToggleButton(dampenerBinding, () => controller.SwitchDamping());
+                InputLogger.HandleToggleButton(broadcastingBinding, () => controller.SwitchBroadcasting());
+                InputLogger.HandleToggleButton(lightsBinding, () => controller.SwitchLights());
+                InputLogger.HandleToggleButton(terminalBinding, () => controller.ShowTerminal());
+                InputLogger.HandleToggleButton(parkBinding, () => controller.SwitchParkedStatus());
+                InputLogger.HandleToggleButton(powerBinding, () => controller.SwitchReactorsLocal());
+
+                if (cockpit != null)
+                {
+                    InputLogger.HandleToggleButton(nextToolbarBinding, () => cockpit.Toolbar.PageUp());
+                    InputLogger.HandleToggleButton(prevToolbarBinding, () => cockpit.Toolbar.PageDown());
+                    InputLogger.HandleToggleButton(nextToolitemBinding, () => cockpit.Toolbar.SelectNextSlot());
+                    InputLogger.HandleToggleButton(prevToolitemBinding, () => cockpit.Toolbar.SelectPreviousSlot());
+
+                    for (int i = 0; i <= 8; i++)
+                    {
+                        int index = i;
+                        InputLogger.HandleToggleButton(pageBinding[i], () => cockpit.Toolbar.SwitchToPage(index));
+                        InputLogger.HandleToggleButton(itemBinding[i], () => cockpit.Toolbar.ActivateItemAtSlot(index));
+                    }
+                }
             }
+            catch (Exception ex)
+            {
+                Debug.LogToDesktop("HotasInputPatch error: " + ex.Message);
+            }
+        }
 
-            // Calculate movement vector - works with any binding type (button, axis, POV)
-            Vector3 move = new Vector3(
-                DeviceManager.GetRawInputValue("StrafeRight") - DeviceManager.GetRawInputValue("StrafeLeft"),  // strafe left(-)/right(+)
-                (DeviceManager.GetRawInputValue("Up") - DeviceManager.GetRawInputValue("Down")),                // up(+)/down(-)
-                (DeviceManager.GetRawInputValue("Forward") - DeviceManager.GetRawInputValue("Backward")) * 100f        // forward(+)/backward(-)
-            );
+        private static void TryRequestTargetLock(MyCharacter character)
+        {
+            try
+            {
+                if (character == null)
+                {
+                    character = MySession.Static.LocalCharacter;
+                    if (character == null)
+                    {
+                        Debug.LogToDesktop("No local character found");
+                        return;
+                    }
+                }
 
-            // Calculate rotation - works with any binding type
-            Vector2 rotation = new Vector2(
-                (DeviceManager.GetRawInputValue("RotateUp") - DeviceManager.GetRawInputValue("RotateDown")) ,    // pitch up(+)/down(-)
-                DeviceManager.GetRawInputValue("RotateLeft") - DeviceManager.GetRawInputValue("RotateRight")  // yaw left(-)/right(+)
-            );
-
-            // Calculate roll - works with any binding type  
-            float roll = DeviceManager.GetRawInputValue("RollLeft") - DeviceManager.GetRawInputValue("RollRight"); // roll left(-)/right(+)
-
-            // Apply movement and rotation
-            controller.MoveAndRotate(move, rotation, roll);
-
-            // Handle firing
-            var fire = Binder.GetBinding("Fire");
-            if (fire != null && DeviceManager.InputLogger.IsButtonPressed(fire.ButtonName))
-                controller.Shoot(MyShootActionEnum.PrimaryAction);
+                var targetFocusComponent = character.Components.Get<MyTargetFocusComponent>();
+                if (targetFocusComponent != null)
+                {
+                    targetFocusComponent.OnLockRequest();
+                    Debug.LogToDesktop("Target lock requested");
+                }
+                else
+                {
+                    Debug.LogToDesktop("MyTargetFocusComponent not found on character");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogToDesktop("Error requesting target lock: " + ex.Message);
+            }
         }
     }
 
@@ -82,4 +189,3 @@ namespace SEHotasPlugin
         }
     }
 }
-

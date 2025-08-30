@@ -102,7 +102,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Binder.cs" />
     <Compile Include="DeviceManager.cs" />
+    <Compile Include="InputLogger.cs" />
     <Compile Include="OptionPage.cs" />
     <Compile Include="Patches.cs" />
     <Compile Include="ProfileSystem.cs" />

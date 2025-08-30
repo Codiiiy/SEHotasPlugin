@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Sandbox.Game;
 using Sandbox.Game.Gui;
@@ -14,17 +15,18 @@ namespace SEHotasPlugin
 {
     public static class OptionsPage
     {
+        public static bool inputCapture = false;
         public static void AddHotasPageContent(MyGuiScreenOptionsControls instance, object controlsList, object keyObj)
         {
+
             var controlsType = typeof(MyGuiScreenOptionsControls);
             var leftOriginField = controlsType.GetField("m_controlsOriginLeft", BindingFlags.Instance | BindingFlags.NonPublic);
             var rightOriginField = controlsType.GetField("m_controlsOriginRight", BindingFlags.Instance | BindingFlags.NonPublic);
 
-            string[] movementNames = { "Forward", "Backward", "Strafe Left", "Strafe Right", "Rotate Left", "Rotate Right", "Rotate Up", "Rotate Down", "Roll Left", "Roll Right", "Up", "Down" };
-            string[] systemsNames = { "Fire/Use tool", "Secondary mode", "Reload", "Dampeners", "Relative Dampeners", "Broadcasting", "Lights", "Terminal" };
-            string[] toolbarsNames = { "Next toolbar item", "Previous toolbar item", "Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9", "Unequip" };
-            string[] toolbarPagesNames = { "Next toolbar", "Previous toolbar", "Page 1", "Page 2", "Page 3", "Page 4", "Page 5", "Page 6", "Page 7", "Page 8", "Page 9", "Page 0" };
-            string[] miscellaneousNames = { "Previous Camera", "Next Camera", "Park", "Local power switch" };
+            string[] movementNames = { "Forward", "Backward Toggle", "Strafe Left", "Strafe Right", "Rotate Left", "Rotate Right", "Rotate Up", "Rotate Down", "Roll Left", "Roll Right", "Up", "Down" };
+            string[] systemsNames = { "Fire", "Secondary mode", "Dampeners", "Broadcasting", "Lights", "Terminal", "Park", "Local power switch" };
+            string[] toolbarsNames = { "Next toolbar item", "Previous toolbar item", "Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6", "Item 7", "Item 8", "Item 9"};
+            string[] toolbarPagesNames = { "Next toolbar", "Previous toolbar", "Page 1", "Page 2", "Page 3", "Page 4", "Page 5", "Page 6", "Page 7", "Page 8", "Page 9" };
 
             if (leftOriginField?.GetValue(instance) is Vector2 leftOrigin &&
                 rightOriginField?.GetValue(instance) is Vector2 rightOrigin)
@@ -33,7 +35,6 @@ namespace SEHotasPlugin
                 float deltaY = 0.9f;
                 var centerOrigin = (leftOrigin + rightOrigin) / 2f;
 
-                // Add label + combo
                 var deviceLabel = new MyGuiControlLabel(
                     leftOrigin + deltaY * MyGuiConstants.CONTROLS_DELTA,
                     null,
@@ -47,19 +48,19 @@ namespace SEHotasPlugin
                 instance.Controls.Add(deviceLabel);
 
                 var controlTypeCombo = new MyGuiControlCombobox(centerOrigin + deltaY * MyGuiConstants.CONTROLS_DELTA);
-                controlTypeCombo.AddItem(0, "Movement");
-                controlTypeCombo.AddItem(1, "Systems");
-                controlTypeCombo.AddItem(2, "Toolbars");
-                controlTypeCombo.AddItem(3, "Toolbars Pages");
-                controlTypeCombo.AddItem(4, "Miscellaneous");
+                controlTypeCombo.AddItem(0, "Settings");
+                controlTypeCombo.AddItem(1, "Movement");
+                controlTypeCombo.AddItem(2, "Systems");
+                controlTypeCombo.AddItem(3, "Toolbars");
+                controlTypeCombo.AddItem(4, "Toolbars Pages");
                 controlTypeCombo.SelectItemByKey(0);
                 controlsListObj.Add(controlTypeCombo);
                 instance.Controls.Add(controlTypeCombo);
 
-                // helper to build rows dynamically
+
                 void RebuildRows(string[] page)
                 {
-                    // remove old rows
+
                     for (int i = controlsListObj.Count - 1; i >= 0; i--)
                     {
                         if (controlsListObj[i] is MyGuiControlLabel || controlsListObj[i] is MyGuiControlButton)
@@ -69,7 +70,6 @@ namespace SEHotasPlugin
                         }
                     }
 
-                    // add new rows
                     for (int i = 0; i < page.Length; i++)
                     {
                         var rowDelta = MyGuiConstants.CONTROLS_DELTA * (i + 1.85f);
@@ -86,7 +86,7 @@ namespace SEHotasPlugin
                         controlsListObj.Add(label);
                         instance.Controls.Add(label);
 
-                        int captureIndex = i; // closure safety
+                        int captureIndex = i; 
 
                         string actionKey = page[i].Replace(" ", "");
                         string existingBinding = Binder.GetBoundButton(actionKey);
@@ -101,14 +101,18 @@ namespace SEHotasPlugin
                             textScale: 0.4f,
                             onButtonClick: (btn) =>
                             {
-                                DeviceManager.InputCapture.StartCapture((device, capturedButton) =>
+                                inputCapture = true;
+                                InputLogger.StartCapture((device, capturedButton) =>
                                 {
+
                                     string deviceName = device.Information?.ProductName ?? "Unknown Device";
                                     btn.Text = capturedButton.ToString();
                                     Binder.Bind(deviceName, page[captureIndex].Replace(" ", ""), capturedButton);
                                     Binder.ExportBindingsToDesktop();
+                                    ProfileSystem.Autosave();
+                                    inputCapture = false;
                                 });
-                                ProfileSystem.Autosave();
+
                             }
                         );
                         bindingButton.SetTooltip("Click to bind " + page[i] + " action");
@@ -126,10 +130,8 @@ namespace SEHotasPlugin
                     }
                 }
 
-                // Initial build
                 RebuildRows(movementNames);
 
-                // Combo change event
                 controlTypeCombo.ItemSelected += () =>
                 {
                     string[] newPage;
@@ -140,7 +142,6 @@ namespace SEHotasPlugin
                         case 1: newPage = systemsNames; break;
                         case 2: newPage = toolbarsNames; break;
                         case 3: newPage = toolbarPagesNames; break;
-                        case 4: newPage = miscellaneousNames; break;
                         default: newPage = movementNames; break;
                     }
                     RebuildRows(newPage);

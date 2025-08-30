@@ -75,7 +75,6 @@ namespace SEHotasPlugin
                     continue;
                 }
 
-                // Rebuild bindings
                 foreach (var actionPair in devicePair.Value)
                 {
                     Binder.Bind(devicePair.Key, actionPair.Key,

@@ -1,9 +1,11 @@
 ﻿using VRage.Plugins;
 using HarmonyLib;
 using System.Reflection;
-using SharpDX.DirectInput;
-using System.Collections.Generic;
-using Sandbox.Game.Entities;
+using VRage.Input;
+using Sandbox.Game;
+using VRage.Utils;
+
+
 
 
 namespace SEHotasPlugin
@@ -14,10 +16,10 @@ namespace SEHotasPlugin
 
         public void Init(object gameInstance)
         {
+            MyStringId AX_BASE =  MyStringId.GetOrCompute("ABASE");
             DeviceManager.Init();
             _harmony = new Harmony("com.myseplugin.joystickmenu");
 
-            // Patch RecreateControls
             var recreateTarget = typeof(Sandbox.Game.Gui.MyGuiScreenOptionsControls)
                 .GetMethod("RecreateControls", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             var recreatePostfix = typeof(PluginPatch)
@@ -28,8 +30,10 @@ namespace SEHotasPlugin
 
         public void Update()
         {
-            DeviceManager.InputCapture.Update();
-            DeviceManager.LogInputsToDesktop();
+            if(OptionsPage.inputCapture)
+            {
+                InputLogger.UpdateCapture();
+            }
         }
         public void UpdateBeforeSimulation()
         {
