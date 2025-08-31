@@ -12,15 +12,22 @@ namespace SEHotasPlugin
 
         public static Dictionary<string, float> AxisSensitivity = new Dictionary<string, float>()
         {
-            { "RotateLeft",   1.0f },
-            { "RotateRight",  1.0f },
-            { "RotateUp",     1.0f },
-            { "RotateDown",   1.0f },
-            { "RollLeft",     1.0f },
-            { "RollRight",    1.0f }
+            { "Thrust",   1.0f },
+            { "Pitch",  1.0f },
+            { "Yaw",     1.0f },
+            { "Roll",   1.0f },         
         };
 
-        public static void Bind(string deviceName, string actionName, DeviceManager.DeviceButton deviceButton)
+        public static float GetAxisSensitivity(string axisName)
+        {
+            if (AxisSensitivity.TryGetValue(axisName, out float value))
+            {
+                return value;
+            }
+            return 1.0f;
+        }
+
+            public static void Bind(string deviceName, string actionName, DeviceManager.DeviceButton deviceButton)
         {
             if (!_bindings.ContainsKey(deviceName))
                 _bindings[deviceName] = new Dictionary<string, DeviceManager.DeviceButton>();
@@ -75,5 +82,20 @@ namespace SEHotasPlugin
             }
             Console.WriteLine($"Bindings exported to {filePath}");
         }
+        public static void ClearBinding(string actionName)
+        {
+            foreach (var devicePair in _bindings.ToList())
+            {
+                if (devicePair.Value.ContainsKey(actionName))
+                {
+                    devicePair.Value.Remove(actionName);
+                    if (devicePair.Value.Count == 0)
+                        _bindings.Remove(devicePair.Key);
+
+                    break;
+                }
+            }
+        }
+
     }
 }

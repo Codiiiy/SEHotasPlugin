@@ -27,7 +27,8 @@ namespace SEHotasPlugin
             var data = new SerializableProfile
             {
                 Bindings = new Dictionary<string, Dictionary<string, string>>(),
-                AxisSensitivity = Binder.AxisSensitivity
+                AxisSensitivity = Binder.AxisSensitivity,
+                ReverseOption = InputLogger.reverseOption
             };
 
             foreach (var devicePair in GetPrivateBindings())
@@ -71,7 +72,6 @@ namespace SEHotasPlugin
 
                 if (!deviceConnected)
                 {
-                    Console.WriteLine($"[ProfileSystem] Skipping device {devicePair.Key} (not connected).");
                     continue;
                 }
 
@@ -83,6 +83,7 @@ namespace SEHotasPlugin
             }
 
             Binder.AxisSensitivity = data.AxisSensitivity ?? new Dictionary<string, float>();
+            InputLogger.reverseOption = data.ReverseOption ?? true;
         }
 
         private static void ResetBindings()
@@ -105,6 +106,7 @@ namespace SEHotasPlugin
         {
             public Dictionary<string, Dictionary<string, string>> Bindings { get; set; }
             public Dictionary<string, float> AxisSensitivity { get; set; }
+            public bool? ReverseOption { get; set; }
         }
     }
 }

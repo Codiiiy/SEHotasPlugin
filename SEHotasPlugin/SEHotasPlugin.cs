@@ -16,7 +16,6 @@ namespace SEHotasPlugin
 
         public void Init(object gameInstance)
         {
-            MyStringId AX_BASE =  MyStringId.GetOrCompute("ABASE");
             DeviceManager.Init();
             _harmony = new Harmony("com.myseplugin.joystickmenu");
 

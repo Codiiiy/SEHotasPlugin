@@ -9,7 +9,6 @@ using Sandbox.Game.World;
 using VRageMath;
 using Sandbox.Game.Entities.Character;
 using Sandbox.Game.EntityComponents;
-using VRage.Game.Components;
 
 
 namespace SEHotasPlugin
@@ -38,7 +37,7 @@ namespace SEHotasPlugin
                 var prevToolbarBinding = Binder.GetBinding("Previoustoolbar");
                 var nextToolitemBinding = Binder.GetBinding("Nexttoolbaritem");
                 var prevToolitemBinding = Binder.GetBinding("Previoustoolbaritem");
-                var reverseToggle = Binder.GetBinding("BackwardToggle");
+                var reverseToggle = Binder.GetBinding("ReverseToggle");
                 DeviceManager.DeviceButton[] itemBinding = new DeviceManager.DeviceButton[9];
                 DeviceManager.DeviceButton[] pageBinding = new DeviceManager.DeviceButton[9];
 
@@ -55,30 +54,39 @@ namespace SEHotasPlugin
                         Debug.LogToDesktop("Item binding " + (i + 1) + ": NULL");
                     }
                 }
-
+                float forward = 0f;
                 const float deadzone = 0.15f;
                 float MoveScale = 20f;
                 float deadzoneSq = deadzone * deadzone;
+                if(!InputLogger.reverseOption)
+                {
+                    InputLogger.HandleToggleButton(reverseToggle, () => InputLogger.ToggleReverse());
+                    forward = -InputLogger.GetRawInputValue("Forward");
+                    if (InputLogger.reverseToggled)
+                    {
+                        forward *= -1f;
+                    }
+                }
+                else
+                {
+                    forward = -(InputLogger.GetRawInputValue("Forward") - InputLogger.GetRawInputValue("Reverse"));
+                }
+                forward *= Binder.GetAxisSensitivity("Thrust");
 
-                InputLogger.HandleToggleButton(reverseToggle, () => InputLogger.ToggleReverse());
-                float forward = -InputLogger.GetRawInputValue("Forward");
                 if (forward != 0)
                 {
                     MoveScale = 1f;
                 }
-                if (InputLogger.reverseToggled)
-                {
-                    forward *= -1f;
-                }
-                float updown = (InputLogger.GetRawInputValue("Up") - InputLogger.GetRawInputValue("Down")) * MoveScale;
+
+                float updown = (InputLogger.GetRawInputValue("Up") - InputLogger.GetRawInputValue("Down")) * MoveScale ;
                 float strafe = InputLogger.GetRawInputValue("StrafeRight") - InputLogger.GetRawInputValue("StrafeLeft");
 
                 var hotasMove = new Vector3(strafe, updown, forward);
 
-                float pitch = -(InputLogger.GetRawInputValue("RotateUp") - InputLogger.GetRawInputValue("RotateDown")) * MoveScale;
-                float yaw = -(InputLogger.GetRawInputValue("RotateLeft") - InputLogger.GetRawInputValue("RotateRight")) * MoveScale;
+                float pitch = -(InputLogger.GetRawInputValue("RotateUp") - InputLogger.GetRawInputValue("RotateDown")) * MoveScale * Binder.GetAxisSensitivity("Pitch");
+                float yaw = -(InputLogger.GetRawInputValue("RotateLeft") - InputLogger.GetRawInputValue("RotateRight")) * MoveScale * Binder.GetAxisSensitivity("Yaw");
                 var hotasRotation = new Vector2(pitch, yaw);
-                float hotasRoll = -(InputLogger.GetRawInputValue("RollLeft") - InputLogger.GetRawInputValue("RollRight"));
+                float hotasRoll = -(InputLogger.GetRawInputValue("RollLeft") - InputLogger.GetRawInputValue("RollRight")) * Binder.GetAxisSensitivity("Roll");
 
                 float moveSq = hotasMove.X * hotasMove.X + hotasMove.Y * hotasMove.Y + hotasMove.Z * hotasMove.Z;
                 float rotSq = hotasRotation.X * hotasRotation.X + hotasRotation.Y * hotasRotation.Y;

@@ -12,7 +12,6 @@ namespace SEHotasPlugin
         private static readonly DirectInput directInput = new DirectInput();
         private static List<Joystick> devices = new List<Joystick>();
         public static IReadOnlyList<Joystick> Devices => devices;
-
         private static Dictionary<Joystick, JoystickState> _lastStates = new Dictionary<Joystick, JoystickState>();
         private const float AxisLogThreshold = 0.1f;
 
@@ -84,8 +83,8 @@ namespace SEHotasPlugin
 
             var json = File.ReadAllText(profilePath);
             var profileData = JsonConvert.DeserializeObject<ProfileSystem.SerializableProfile>(json);
-            if (profileData == null) return;
 
+            if (profileData == null) return;
 
             typeof(Binder)
                 .GetField("_bindings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
@@ -110,7 +109,15 @@ namespace SEHotasPlugin
                     Binder.Bind(devicePair.Key, actionPair.Key, new DeviceManager.DeviceButton(actionPair.Value));
                 }
             }
-            Binder.AxisSensitivity = profileData.AxisSensitivity ?? new Dictionary<string, float>();
+
+            if (profileData.AxisSensitivity != null)
+            {
+                foreach (var sensitivityPair in profileData.AxisSensitivity)
+                {
+                    Binder.AxisSensitivity[sensitivityPair.Key] = sensitivityPair.Value;
+                }
+            }
+            InputLogger.reverseOption = profileData.ReverseOption ?? true;
         }
     }
 }
