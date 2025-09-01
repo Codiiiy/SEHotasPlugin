@@ -12,13 +12,20 @@ namespace SEHotasPlugin
 
         public static Dictionary<string, float> AxisSensitivity = new Dictionary<string, float>()
         {
-            { "RotateLeft",   1.0f },
-            { "RotateRight",  1.0f },
-            { "RotateUp",     1.0f },
-            { "RotateDown",   1.0f },
-            { "RollLeft",     1.0f },
-            { "RollRight",    1.0f }
+            { "Thrust",   1.0f },
+            { "Pitch",  1.0f },
+            { "Yaw",     1.0f },
+            { "Roll",   1.0f },
         };
+
+        public static float GetAxisSensitivity(string axisName)
+        {
+            if (AxisSensitivity.TryGetValue(axisName, out float value))
+            {
+                return value;
+            }
+            return 1.0f;
+        }
 
         public static void Bind(string deviceName, string actionName, DeviceManager.DeviceButton deviceButton)
         {
@@ -57,23 +64,20 @@ namespace SEHotasPlugin
             return binding?.ButtonName;
         }
 
-
-        public static void ExportBindingsToDesktop()
+        public static void ClearBinding(string actionName)
         {
-            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            string filePath = Path.Combine(desktopPath, "Bindings.txt");
-            using (StreamWriter writer = new StreamWriter(filePath))
+            foreach (var devicePair in _bindings.ToList())
             {
-                foreach (var device in _bindings)
+                if (devicePair.Value.ContainsKey(actionName))
                 {
-                    writer.WriteLine($"Device: {device.Key}");
-                    foreach (var action in device.Value)
-                    {
-                        writer.WriteLine($"  Action: {action.Key} => Button: {action.Value.ButtonName}");
-                    }
+                    devicePair.Value.Remove(actionName);
+                    if (devicePair.Value.Count == 0)
+                        _bindings.Remove(devicePair.Key);
+
+                    break;
                 }
             }
-            Console.WriteLine($"Bindings exported to {filePath}");
         }
+
     }
 }

@@ -6,12 +6,19 @@ namespace SEHotasPlugin
     class Debug
     {
         public static bool debugMode = true;
-        public static void LogToDesktop(string message)
+        public static void Log(string message)
         {
-            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            string logFile = Path.Combine(desktopPath, "log.txt");
+            if (debugMode)
+            {
+                string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                string logDir = Path.Combine(appDataPath, @"SpaceEngineers\Plugins\SEHotasPlugin\Log");
 
-            File.AppendAllText(logFile, message + Environment.NewLine);
+                Directory.CreateDirectory(logDir);
+
+                string logFile = Path.Combine(logDir, "log.txt");
+
+                File.AppendAllText(logFile, message + Environment.NewLine);
+            }
         }
     }
 }

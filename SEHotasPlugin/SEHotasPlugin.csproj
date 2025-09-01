@@ -107,6 +107,7 @@
     <Compile Include="InputLogger.cs" />
     <Compile Include="OptionPage.cs" />
     <Compile Include="Patches.cs" />
+    <Compile Include="PatchUtils.cs" />
     <Compile Include="ProfileSystem.cs" />
     <Compile Include="SEHotasPlugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
