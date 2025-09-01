@@ -8,13 +8,13 @@ namespace SEHotasPlugin
 {
     public static class InputLogger
     {
-        public static float Deadzone = 0.3f;
-        public static bool reverseToggled = false;
-        public static bool reverseOption = true;
+
+        private static float _DeadZone = 0.3f;
+        public static bool _reverseOption = true;
         private const float ButtonAxisThreshold = 0.5f;
         private static bool _isCapturing = false;
         private static Action<Joystick, DeviceManager.DeviceButton> _onCaptured;
-        private static Dictionary<string, bool> previousButtonStates = new Dictionary<string, bool>();
+        private static Dictionary<string, bool> _previousButtonStates = new Dictionary<string, bool>();
 
         private class DeviceSnapshot
         {
@@ -100,7 +100,7 @@ namespace SEHotasPlugin
         private static bool CheckAxis(DeviceSnapshot snap, string name, int value, int initial)
         {
             float normalized = (value - initial) / 32767f;
-            if (Math.Abs(normalized) > Deadzone)
+            if (InputLogger.ExceedsDeadzone(normalized))
             {
                 FinishCapture(snap.Joystick, new DeviceManager.DeviceButton($"{name} Axis {(normalized > 0 ? "+" : "-")}"));
                 return true;
@@ -231,35 +231,6 @@ namespace SEHotasPlugin
             }
         }
 
-        public static float GetAxisValue(string axisName)
-        {
-            string deviceName = FindDeviceForAxis(axisName);
-            if (string.IsNullOrEmpty(deviceName))
-                return 0f;
-
-            var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceName == deviceName);
-            if (joystick == null)
-                return 0f;
-
-            try
-            {
-                joystick.Poll();
-                var state = joystick.GetCurrentState();
-
-                int value = GetRawAxisValue(state, axisName);
-                float normalized = (value - 32767.5f) / 32767.5f;
-
-                if (Math.Abs(normalized) < Deadzone)
-                    normalized = 0f;
-
-                return normalized;
-            }
-            catch
-            {
-                return 0f;
-            }
-        }
-
         private static string FindDeviceForAxis(string axisName)
         {
             var bindingsField = typeof(Binder).GetField("_bindings",
@@ -278,6 +249,32 @@ namespace SEHotasPlugin
                 }
             }
             return null;
+        }
+
+        public static float GetAxisValue(string axisName)
+        {
+            string deviceName = FindDeviceForAxis(axisName);
+            if (string.IsNullOrEmpty(deviceName))
+                return 0f;
+
+            var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceName == deviceName);
+            if (joystick == null)
+                return 0f;
+
+            try
+            {
+                joystick.Poll();
+                var state = joystick.GetCurrentState();
+
+                int value = GetRawAxisValue(state, axisName);
+                float normalized = (value - 32767.5f) / 32767.5f;
+
+                return InputLogger.ApplyDeadzone(normalized);
+            }
+            catch
+            {
+                return 0f;
+            }
         }
 
         public static float GetInputValue(string actionName)
@@ -310,8 +307,7 @@ namespace SEHotasPlugin
                         int value = GetRawAxisValue(state, axisName);
                         float normalized = (value - 32767.5f) / 32767.5f;
 
-                        if (Math.Abs(normalized) < Deadzone)
-                            normalized = 0f;
+                        normalized = InputLogger.ApplyDeadzone(normalized);
 
                         if (direction == "-")
                             return normalized < 0 ? -normalized : 0f;
@@ -359,6 +355,7 @@ namespace SEHotasPlugin
 
                         int value = GetRawAxisValue(state, axisName);
                         float normalized = (value - 32767.5f) / 32767.5f;
+                        normalized = InputLogger.ApplyDeadzoneWithScaling(normalized);
 
                         if (direction == "-")
                             return normalized < 0 ? -normalized : 0f;
@@ -374,6 +371,7 @@ namespace SEHotasPlugin
 
             return 0f;
         }
+
 
         public static void HandleToggleButton(DeviceManager.DeviceButton binding, System.Action action)
         {
@@ -394,18 +392,56 @@ namespace SEHotasPlugin
                 joystick.Poll();
                 var state = joystick.GetCurrentState();
                 bool currentState = IsButtonPressedOnDevice(state, binding.ButtonName);
-                bool previousState = previousButtonStates.ContainsKey(stateKey) ?
-                                    previousButtonStates[stateKey] : false;
+                bool previousState = _previousButtonStates.ContainsKey(stateKey) ?
+                                    _previousButtonStates[stateKey] : false;
 
                 if (currentState && !previousState)
                 {
                     action?.Invoke();
                 }
 
-                previousButtonStates[stateKey] = currentState;
+                _previousButtonStates[stateKey] = currentState;
             }
             catch { }
         }
-        public static void ToggleReverse() { reverseToggled = !reverseToggled; }
+        public static float DeadZone
+        {
+            get => _DeadZone;
+            set => _DeadZone = Math.Max(0f, Math.Min(1f, value));
+        }
+
+        public static float DeadzoneSquared => _DeadZone * _DeadZone;
+
+        public static bool ExceedsDeadzone(float value)
+        {
+            return Math.Abs(value) >= _DeadZone;
+        }
+
+        public static bool ExceedsDeadzone(float x, float y)
+        {
+            return (x * x + y * y) >= DeadzoneSquared;
+        }
+
+        public static bool ExceedsDeadzone(float x, float y, float z)
+        {
+            return (x * x + y * y + z * z) >= DeadzoneSquared;
+        }
+
+        public static float ApplyDeadzone(float value)
+        {
+            return ExceedsDeadzone(value) ? value : 0f;
+        }
+
+        public static float ApplyDeadzoneWithScaling(float value)
+        {
+            float absValue = Math.Abs(value);
+            if (absValue < _DeadZone)
+                return 0f;
+
+            float scaledValue = (absValue - _DeadZone) / (1f - _DeadZone);
+            return value < 0 ? -scaledValue : scaledValue;
+        }
+
+        public static void ToggleReverse() { PatchUtils.reverseToggled = !PatchUtils.reverseToggled; }
     }
 }

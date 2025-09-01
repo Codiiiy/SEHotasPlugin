@@ -18,12 +18,6 @@ namespace SEHotasPlugin
         {
             DeviceManager.Init();
             _harmony = new Harmony("com.myseplugin.joystickmenu");
-
-            var recreateTarget = typeof(Sandbox.Game.Gui.MyGuiScreenOptionsControls)
-                .GetMethod("RecreateControls", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-            var recreatePostfix = typeof(PluginPatch)
-                .GetMethod(nameof(PluginPatch.RecreateControlsPostfix), BindingFlags.Static | BindingFlags.NonPublic);
-            _harmony.Patch(recreateTarget, postfix: new HarmonyMethod(recreatePostfix));
             _harmony.PatchAll();
         }
 
@@ -33,10 +27,6 @@ namespace SEHotasPlugin
             {
                 InputLogger.UpdateCapture();
             }
-        }
-        public void UpdateBeforeSimulation()
-        {
-
         }
         public void Dispose()
         {

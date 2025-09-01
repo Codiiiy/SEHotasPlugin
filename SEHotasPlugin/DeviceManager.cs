@@ -1,20 +1,20 @@
 ﻿using Newtonsoft.Json;
+using Sandbox.Game.Screens.Helpers;
 using SharpDX.DirectInput;
 using System;
 using System.Collections.Generic;
 using System.IO;
-
 
 namespace SEHotasPlugin
 {
     public static class DeviceManager
     {
         private static readonly DirectInput directInput = new DirectInput();
-        private static List<Joystick> devices = new List<Joystick>();
+        private static readonly List<Joystick> devices = new List<Joystick>();
         public static IReadOnlyList<Joystick> Devices => devices;
-        private static Dictionary<Joystick, JoystickState> _lastStates = new Dictionary<Joystick, JoystickState>();
+        private static readonly Dictionary<Joystick, JoystickState> _lastStates = new Dictionary<Joystick, JoystickState>();
         private const float AxisLogThreshold = 0.1f;
-
+        private const string SaitekSwitchPanelName = "Saitek Pro Flight Switch Panel";
 
         public class DeviceButton
         {
@@ -25,51 +25,151 @@ namespace SEHotasPlugin
 
         public static void Init()
         {
-            devices = DetectDevices();
-            AcquireDevices(devices);
+            DetectAndAcquireDevices();
             LoadAutosave();
+        }
+
+        private static void DetectAndAcquireDevices()
+        {
+            devices.Clear();
+
+            DetectGameControlDevices();
+
+            if (!IsSaitekSwitchPanelPresent())
+            {
+                DetectSaitekSwitchPanel();
+            }
+        }
+
+        private static void DetectGameControlDevices()
+        {
+            foreach (var deviceInstance in directInput.GetDevices(DeviceClass.GameControl, DeviceEnumerationFlags.AttachedOnly))
+            {
+                TryAcquireDevice(deviceInstance);
+            }
+        }
+
+        private static bool IsSaitekSwitchPanelPresent()
+        {
+            foreach (var device in devices)
+            {
+                if (device.Information.ProductName == SaitekSwitchPanelName)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private static void DetectSaitekSwitchPanel()
+        {
+            foreach (var deviceInstance in directInput.GetDevices(DeviceClass.All, DeviceEnumerationFlags.AttachedOnly))
+            {
+                if (IsSaitekSwitchPanel(deviceInstance))
+                {
+                    if (TryAcquireDevice(deviceInstance))
+                    {
+                        Console.WriteLine("Saitek Pro Flight Switch Panel successfully added!");
+                        return;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Failed to acquire Saitek Switch Panel");
+                    }
+                }
+            }
+            Console.WriteLine("Saitek Pro Flight Switch Panel not found or could not be acquired.");
+        }
+
+        private static bool IsSaitekSwitchPanel(DeviceInstance deviceInstance)
+        {
+            return deviceInstance.ProductName == SaitekSwitchPanelName &&
+                   deviceInstance.Type == DeviceType.Device;
+        }
+
+        private static bool TryAcquireDevice(DeviceInstance deviceInstance)
+        {
+            try
+            {
+                var joystick = new Joystick(directInput, deviceInstance.InstanceGuid);
+                joystick.Properties.BufferSize = 128;
+                joystick.Acquire();
+                devices.Add(joystick);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public static List<Joystick> DetectDevices()
         {
-            devices.Clear();
-
-            foreach (var deviceInstance in directInput.GetDevices(DeviceClass.GameControl, DeviceEnumerationFlags.AttachedOnly))
-            {
-                var joystick = new Joystick(directInput, deviceInstance.InstanceGuid);
-                joystick.Properties.BufferSize = 128;
-                try { joystick.Acquire(); } catch { continue; }
-                devices.Add(joystick);
-            }
-
-            return new List<Joystick>(devices);
+            DetectAndAcquireDevices();
+            return devices;
         }
 
         public static void AcquireDevices(IEnumerable<Joystick> joysticks)
         {
             foreach (var joystick in joysticks)
             {
-                try { joystick.Acquire(); } catch { }
+                try
+                {
+                    joystick.Acquire();
+                }
+                catch
+                {
+
+                }
             }
         }
 
         public static void UnacquireDevices()
         {
             foreach (var joystick in devices)
+            {
                 joystick.Unacquire();
+            }
         }
 
         private static void CheckAxisChange(string name, int value, int lastValue, List<string> changes)
         {
             float normalized = Math.Abs(value - lastValue) / 32767f;
             if (normalized > AxisLogThreshold)
+            {
                 changes.Add($"{name} Axis: {value}");
+            }
         }
-
 
         public static void LoadAutosave()
         {
-            string profilePath = Path.Combine(
+            string profilePath = GetAutosaveProfilePath();
+
+            if (!File.Exists(profilePath))
+                return;
+
+            try
+            {
+                var json = File.ReadAllText(profilePath);
+                var profileData = JsonConvert.DeserializeObject<ProfileSystem.SerializableProfile>(json);
+
+                if (profileData == null)
+                    return;
+
+                ClearExistingBindings();
+                LoadDeviceBindings(profileData);
+                LoadAxisSensitivity(profileData);
+                LoadReverseOption(profileData);
+            }
+            catch
+            {
+
+            }
+        }
+
+        private static string GetAutosaveProfilePath()
+        {
+            return Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "SpaceEngineers",
                 "Plugins",
@@ -77,47 +177,55 @@ namespace SEHotasPlugin
                 "Profiles",
                 "Autosave.json"
             );
+        }
 
-            if (!File.Exists(profilePath))
-                return;
-
-            var json = File.ReadAllText(profilePath);
-            var profileData = JsonConvert.DeserializeObject<ProfileSystem.SerializableProfile>(json);
-
-            if (profileData == null) return;
-
+        private static void ClearExistingBindings()
+        {
             typeof(Binder)
                 .GetField("_bindings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
-                ?.SetValue(null, new Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>>());
+                ?.SetValue(null, new Dictionary<string, Dictionary<string, DeviceButton>>());
+        }
 
+        private static void LoadDeviceBindings(ProfileSystem.SerializableProfile profileData)
+        {
             foreach (var devicePair in profileData.Bindings)
             {
-                bool deviceConnected = false;
-                foreach (var dev in DeviceManager.Devices)
-                {
-                    if (dev.Information.InstanceName == devicePair.Key)
-                    {
-                        deviceConnected = true;
-                        break;
-                    }
-                }
-
-                if (!deviceConnected) continue;
+                if (!IsDeviceConnected(devicePair.Key))
+                    continue;
 
                 foreach (var actionPair in devicePair.Value)
                 {
-                    Binder.Bind(devicePair.Key, actionPair.Key, new DeviceManager.DeviceButton(actionPair.Value));
+                    Binder.Bind(devicePair.Key, actionPair.Key, new DeviceButton(actionPair.Value));
                 }
             }
+        }
 
-            if (profileData.AxisSensitivity != null)
+        private static bool IsDeviceConnected(string deviceName)
+        {
+            foreach (var device in Devices)
             {
-                foreach (var sensitivityPair in profileData.AxisSensitivity)
+                if (device.Information.InstanceName == deviceName)
                 {
-                    Binder.AxisSensitivity[sensitivityPair.Key] = sensitivityPair.Value;
+                    return true;
                 }
             }
-            InputLogger.reverseOption = profileData.ReverseOption ?? true;
+            return false;
+        }
+
+        private static void LoadAxisSensitivity(ProfileSystem.SerializableProfile profileData)
+        {
+            if (profileData.AxisSensitivity == null)
+                return;
+
+            foreach (var sensitivityPair in profileData.AxisSensitivity)
+            {
+                Binder.AxisSensitivity[sensitivityPair.Key] = sensitivityPair.Value;
+            }
+        }
+
+        private static void LoadReverseOption(ProfileSystem.SerializableProfile profileData)
+        {
+            InputLogger._reverseOption = profileData.ReverseOption ?? true;
         }
     }
 }

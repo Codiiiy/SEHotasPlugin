@@ -28,7 +28,8 @@ namespace SEHotasPlugin
             {
                 Bindings = new Dictionary<string, Dictionary<string, string>>(),
                 AxisSensitivity = Binder.AxisSensitivity,
-                ReverseOption = InputLogger.reverseOption
+                ReverseOption = InputLogger._reverseOption,
+                AxisDeadzone = InputLogger.DeadZone
             };
 
             foreach (var devicePair in GetPrivateBindings())
@@ -83,7 +84,8 @@ namespace SEHotasPlugin
             }
 
             Binder.AxisSensitivity = data.AxisSensitivity ?? new Dictionary<string, float>();
-            InputLogger.reverseOption = data.ReverseOption ?? true;
+            InputLogger._reverseOption = data.ReverseOption ?? true;
+            InputLogger.DeadZone = data.AxisDeadzone ?? 0.3f;
         }
 
         private static void ResetBindings()
@@ -107,6 +109,9 @@ namespace SEHotasPlugin
             public Dictionary<string, Dictionary<string, string>> Bindings { get; set; }
             public Dictionary<string, float> AxisSensitivity { get; set; }
             public bool? ReverseOption { get; set; }
+
+            public float? AxisDeadzone { get; set; }
+
         }
     }
 }

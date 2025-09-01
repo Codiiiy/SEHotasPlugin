@@ -31,7 +31,7 @@ namespace SEHotasPlugin
             string[] GetMovementNames()
             {
                 string[] movementNames = { "Forward", "Reverse Toggle", "Strafe Left", "Strafe Right", "Rotate Left", "Rotate Right", "Rotate Up", "Rotate Down", "Roll Left", "Roll Right", "Up", "Down" };
-                if (!InputLogger.reverseOption)
+                if (!InputLogger._reverseOption)
                 {
                     movementNames[1] = "Reverse";
                 }
@@ -72,7 +72,13 @@ namespace SEHotasPlugin
 
                     for (int i = controlsListObj.Count - 1; i >= 0; i--)
                     {
-                        if (controlsListObj[i] is MyGuiControlLabel || controlsListObj[i] is MyGuiControlButton || controlsListObj[i] is MyGuiControlSlider || controlsListObj[i] is MyGuiControlCheckbox)
+                        if (controlsListObj[i] is MyGuiControlLabel || controlsListObj[i] is MyGuiControlButton ||
+                            controlsListObj[i] is MyGuiControlSlider || controlsListObj[i] is MyGuiControlCheckbox)
+                        {
+                            instance.Controls.Remove((MyGuiControlBase)controlsListObj[i]);
+                            controlsListObj.RemoveAt(i);
+                        }
+                        else if (controlsListObj[i] is MyGuiControlCombobox combo && combo != controlTypeCombo)
                         {
                             instance.Controls.Remove((MyGuiControlBase)controlsListObj[i]);
                             controlsListObj.RemoveAt(i);
@@ -81,6 +87,52 @@ namespace SEHotasPlugin
 
                     if (isSettings)
                     {
+                        var deadzoneRowDelta = MyGuiConstants.CONTROLS_DELTA * 3.5f;
+                        var deadzoneLabel = new MyGuiControlLabel(
+                            leftOrigin + deadzoneRowDelta,
+                            null,
+                            "Axis Deadzone:",
+                            null,
+                            0.8f,
+                            "White",
+                            MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER
+                        );
+                        controlsListObj.Add(deadzoneLabel);
+                        instance.Controls.Add(deadzoneLabel);
+
+                        float savedDeadzone = InputLogger.DeadZone;
+
+                        var deadzoneSlider = new MyGuiControlSlider(
+                            position: centerOrigin + deadzoneRowDelta,
+                            minValue: 0f,
+                            maxValue: 1f,
+                            width: 0.25f,
+                            defaultValue: savedDeadzone,
+                            labelText: "Axis Deadzone",
+                            labelScale: 0.8f
+                        );
+                        controlsListObj.Add(deadzoneSlider);
+                        instance.Controls.Add(deadzoneSlider);
+
+                        var deadzoneValueLabel = new MyGuiControlLabel(
+                            centerOrigin + new Vector2(0.15f, 0f) + deadzoneRowDelta,
+                            null,
+                            savedDeadzone.ToString("F2"),
+                            null,
+                            0.8f,
+                            "White",
+                            MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER
+                        );
+                        controlsListObj.Add(deadzoneValueLabel);
+                        instance.Controls.Add(deadzoneValueLabel);
+
+                        deadzoneSlider.ValueChanged += (s) =>
+                        {
+                            deadzoneValueLabel.Text = s.Value.ToString("F2");
+                            InputLogger.DeadZone = s.Value;
+                            ProfileSystem.Autosave();
+                        };
+
                         var settingsTitle = new MyGuiControlLabel(
                             leftOrigin + MyGuiConstants.CONTROLS_DELTA * 1.5f,
                             null,
@@ -106,16 +158,14 @@ namespace SEHotasPlugin
                         var reverseCheckbox = new MyGuiControlCheckbox(
                             position: centerOrigin + reverseRowDelta,
                             originAlign: MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER,
-                            isChecked: InputLogger.reverseOption
+                            isChecked: InputLogger._reverseOption
                         );
 
-
-                        //Add dave option.
 
                         reverseCheckbox.SetTooltip("Enabled: Toggle a button to place in Reverse, Disabled: Reverse is its own axis");
                         reverseCheckbox.IsCheckedChanged += (cb) =>
                         {
-                            InputLogger.reverseOption = cb.IsChecked;
+                            InputLogger._reverseOption = cb.IsChecked;
                             ProfileSystem.Autosave();
 
                             long currentSelectedId = controlTypeCombo.GetSelectedKey();
@@ -129,7 +179,7 @@ namespace SEHotasPlugin
 
                         for (int i = 0; i < page.Length; i++)
                         {
-                            var rowDelta = MyGuiConstants.CONTROLS_DELTA * (i + 3.5f);
+                            var rowDelta = MyGuiConstants.CONTROLS_DELTA * (i + 4.5f);
 
                             var label = new MyGuiControlLabel(
                                 leftOrigin + rowDelta,
@@ -179,6 +229,41 @@ namespace SEHotasPlugin
                                 ProfileSystem.Autosave();
                             };
                         }
+
+
+                        var deviceDetectionRowDelta = MyGuiConstants.CONTROLS_DELTA * (page.Length + 4.5f);
+
+                        var detectedDeviceLabel = new MyGuiControlLabel(
+                            leftOrigin + deviceDetectionRowDelta,
+                            null,
+                            "Found Devices:",
+                            null,
+                            0.8f,
+                            "White",
+                            MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER
+                        );
+                        controlsListObj.Add(detectedDeviceLabel);
+                        instance.Controls.Add(detectedDeviceLabel);
+
+                        var deviceDetectionCombo = new MyGuiControlCombobox(centerOrigin + deviceDetectionRowDelta);
+
+                        if (DeviceManager.Devices.Count == 0)
+                        {
+                            deviceDetectionCombo.AddItem(0, "No Device Detected");
+                        }
+                        else
+                        {
+                            for (int i = 0; i < DeviceManager.Devices.Count; i++)
+                            {
+                                string deviceName = DeviceManager.Devices[i].Information?.ProductName ?? "Unknown Device";
+                                deviceDetectionCombo.AddItem(i, deviceName);
+                            }
+                        }
+
+                        deviceDetectionCombo.SelectItemByKey(0);
+                        deviceDetectionCombo.SetTooltip("Shows detected input devices (for logging purposes only)");
+                        controlsListObj.Add(deviceDetectionCombo);
+                        instance.Controls.Add(deviceDetectionCombo);
                     }
                     else
                     {
@@ -213,6 +298,7 @@ namespace SEHotasPlugin
                                 textScale: 0.4f,
                                 onButtonClick: (btn) =>
                                 {
+                                    btn.Text = "Press Key";
                                     inputCapture = true;
                                     InputLogger.StartCapture((device, capturedButton) =>
                                     {
@@ -220,7 +306,6 @@ namespace SEHotasPlugin
                                         string deviceName = device.Information?.ProductName ?? "Unknown Device";
                                         btn.Text = capturedButton.ToString();
                                         Binder.Bind(deviceName, page[captureIndex].Replace(" ", ""), capturedButton);
-                                        Binder.ExportBindingsToDesktop();
                                         ProfileSystem.Autosave();
                                         inputCapture = false;
                                     });
@@ -232,7 +317,7 @@ namespace SEHotasPlugin
                             instance.Controls.Add(bindingButton);
 
                             var clearButton = new MyGuiControlButton(
-                                centerOrigin + new Vector2(0.15f, 0f) + rowDelta,
+                                centerOrigin + new Vector2(0.08f, 0f) + rowDelta,
                                 MyGuiControlButtonStyleEnum.Close,
                                 new Vector2(0.04f, 0.04f)
                             );

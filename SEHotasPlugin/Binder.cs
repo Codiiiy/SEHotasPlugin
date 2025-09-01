@@ -15,7 +15,7 @@ namespace SEHotasPlugin
             { "Thrust",   1.0f },
             { "Pitch",  1.0f },
             { "Yaw",     1.0f },
-            { "Roll",   1.0f },         
+            { "Roll",   1.0f },
         };
 
         public static float GetAxisSensitivity(string axisName)
@@ -27,7 +27,7 @@ namespace SEHotasPlugin
             return 1.0f;
         }
 
-            public static void Bind(string deviceName, string actionName, DeviceManager.DeviceButton deviceButton)
+        public static void Bind(string deviceName, string actionName, DeviceManager.DeviceButton deviceButton)
         {
             if (!_bindings.ContainsKey(deviceName))
                 _bindings[deviceName] = new Dictionary<string, DeviceManager.DeviceButton>();
@@ -64,24 +64,6 @@ namespace SEHotasPlugin
             return binding?.ButtonName;
         }
 
-
-        public static void ExportBindingsToDesktop()
-        {
-            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-            string filePath = Path.Combine(desktopPath, "Bindings.txt");
-            using (StreamWriter writer = new StreamWriter(filePath))
-            {
-                foreach (var device in _bindings)
-                {
-                    writer.WriteLine($"Device: {device.Key}");
-                    foreach (var action in device.Value)
-                    {
-                        writer.WriteLine($"  Action: {action.Key} => Button: {action.Value.ButtonName}");
-                    }
-                }
-            }
-            Console.WriteLine($"Bindings exported to {filePath}");
-        }
         public static void ClearBinding(string actionName)
         {
             foreach (var devicePair in _bindings.ToList())
