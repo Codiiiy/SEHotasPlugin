@@ -7,7 +7,8 @@ Known Issues:
 -Only devices catorgized as game controllers are detected.
 
 Things I plan on adding
--Add a menu to add devices not catorgized as game controllers so generic device can work.
--add a toggle to change gameactions from button to switch (so devices with switchs that stay on work better)
+-a menu to add devices not catorgized as game controllers so generic device can work.
+-a toggle to change gameactions from button to switch (so devices with switchs that stay on work better)
+-Save and load profile buttons so users can share profiles
 
 Any bug reports are greatly appreciated.
