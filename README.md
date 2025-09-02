@@ -47,5 +47,5 @@ If you encounter issues, please open a report here on GitHub. Any feedback helps
 ## Preview
 ![Joystick Menu](Screenshots/Preview1.jpg)
 ![Joystick settings](Screenshots/Preview2.jpg)
-![Binding Menu 1](Screenshots/Preview(1).jpg)
-![Binding Menu 2](Screenshots/Preview(2).jpg)
+![Binding Menu 1](Screenshots/Preview (1).jpg)
+![Binding Menu 2](Screenshots/Preview (2).jpg)
