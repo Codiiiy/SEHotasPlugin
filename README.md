@@ -1,20 +1,23 @@
-KEEEEN!!! Joysticks Hotas support would be amazing, So heres my plugin to add it. 
+Joystick & HOTAS Support Plugin
 
-THIS HAS NOT BEEN TESTED IN MULTIPLAYER AS I PLAY SOLO.
+KEEEEN!!! Joystick and HOTAS support has been long overdue—so here’s my plugin to finally add it.
 
-Known Issues:
+I’ve tested this on Keen’s official servers without any issues. Keep in mind, though, that some public servers may have their own restrictions or rules that could block plugins.
 
--Firing Sounds sometimes dont play
+✨ Features
 
--Only devices catorgized as game controllers are detected.
+Full bindable controls for joysticks and HOTAS devices.
 
-Things I plan on adding
--a menu to add devices not catorgized as game controllers so generic device can work.
+Sensitivity and deadzone adjustments per axis.
 
--a toggle to change gameactions from button to switch (so devices with switchs that stay on work better)
+Two reverse options:
 
--Save and load profile buttons so users can share profiles
+Assign an axis as reverse thrust.
 
--Binding specific sensitivity and curves
+Simple toggle to reverse forward thrust.
 
-Any bug reports are greatly appreciated.
+🚀 Quick Start Guide
+
+Install a plugin loader (such as the Space Engineers Launcher).
+
+Space Engineers Plugin Loader
