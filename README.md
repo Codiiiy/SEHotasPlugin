@@ -45,7 +45,7 @@ I’ve tested this on Keen’s official servers without any issues. Keep in mind
 If you encounter issues, please open a report here on GitHub. Any feedback helps make the plugin better!  
 
 Demo Video:
-(Codiiiy'sProjects)
+[Demo video](https://youtu.be/hBoe2La2bOg))
 ## Preview
 ![Joystick Menu](Screenshots/Preview1.jpg)
 ![Joystick settings](Screenshots/Preview2.jpg)
