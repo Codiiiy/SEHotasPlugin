@@ -26,7 +26,7 @@ namespace SEHotasPlugin
 
             var data = new SerializableProfile
             {
-                Bindings = new Dictionary<string, Dictionary<string, string>>(),
+                Bindings = new Dictionary<Guid, Dictionary<string, string>>(),
                 AxisSensitivity = Binder.AxisSensitivity,
                 ReverseOption = InputLogger._reverseOption,
                 AxisDeadzone = InputLogger.DeadZone
@@ -34,7 +34,9 @@ namespace SEHotasPlugin
 
             foreach (var devicePair in GetPrivateBindings())
             {
-                data.Bindings[devicePair.Key] = new Dictionary<string, string>();
+                if (!data.Bindings.ContainsKey(devicePair.Key))
+                    data.Bindings[devicePair.Key] = new Dictionary<string, string>();
+
                 foreach (var actionPair in devicePair.Value)
                 {
                     data.Bindings[devicePair.Key][actionPair.Key] = actionPair.Value.ButtonName;
@@ -43,6 +45,7 @@ namespace SEHotasPlugin
 
             File.WriteAllText(filePath, JsonConvert.SerializeObject(data, Formatting.Indented));
         }
+
         public static void Autosave()
         {
             SaveProfile("Autosave");
@@ -64,7 +67,7 @@ namespace SEHotasPlugin
                 bool deviceConnected = false;
                 foreach (var dev in DeviceManager.Devices)
                 {
-                    if (dev.Information.InstanceName == devicePair.Key)
+                    if (dev.Information.InstanceGuid == devicePair.Key)
                     {
                         deviceConnected = true;
                         break;
@@ -72,14 +75,11 @@ namespace SEHotasPlugin
                 }
 
                 if (!deviceConnected)
-                {
                     continue;
-                }
 
                 foreach (var actionPair in devicePair.Value)
                 {
-                    Binder.Bind(devicePair.Key, actionPair.Key,
-                        new DeviceManager.DeviceButton(actionPair.Value));
+                    Binder.Bind(devicePair.Key, actionPair.Key, new DeviceManager.DeviceButton(actionPair.Value));
                 }
             }
 
@@ -90,15 +90,15 @@ namespace SEHotasPlugin
 
         private static void ResetBindings()
         {
-            var empty = new Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>>();
+            var empty = new Dictionary<Guid, Dictionary<string, DeviceManager.DeviceButton>>();
             typeof(Binder)
                 .GetField("_bindings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
                 ?.SetValue(null, empty);
         }
 
-        private static Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>> GetPrivateBindings()
+        private static Dictionary<Guid, Dictionary<string, DeviceManager.DeviceButton>> GetPrivateBindings()
         {
-            return (Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>>)
+            return (Dictionary<Guid, Dictionary<string, DeviceManager.DeviceButton>>)
                 typeof(Binder)
                     .GetField("_bindings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
                     ?.GetValue(null);
@@ -106,12 +106,10 @@ namespace SEHotasPlugin
 
         public class SerializableProfile
         {
-            public Dictionary<string, Dictionary<string, string>> Bindings { get; set; }
+            public Dictionary<Guid, Dictionary<string, string>> Bindings { get; set; }
             public Dictionary<string, float> AxisSensitivity { get; set; }
             public bool? ReverseOption { get; set; }
-
             public float? AxisDeadzone { get; set; }
-
         }
     }
 }

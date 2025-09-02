@@ -1,5 +1,4 @@
 ﻿using Newtonsoft.Json;
-using Sandbox.Game.Screens.Helpers;
 using SharpDX.DirectInput;
 using System;
 using System.Collections.Generic;
@@ -12,9 +11,7 @@ namespace SEHotasPlugin
         private static readonly DirectInput directInput = new DirectInput();
         private static readonly List<Joystick> devices = new List<Joystick>();
         public static IReadOnlyList<Joystick> Devices => devices;
-        private static readonly Dictionary<Joystick, JoystickState> _lastStates = new Dictionary<Joystick, JoystickState>();
         private const float AxisLogThreshold = 0.1f;
-        private const string SaitekSwitchPanelName = "Saitek Pro Flight Switch Panel";
 
         public class DeviceButton
         {
@@ -22,6 +19,7 @@ namespace SEHotasPlugin
             public DeviceButton(string buttonName) { ButtonName = buttonName; }
             public override string ToString() => ButtonName;
         }
+
 
         public static void Init()
         {
@@ -32,13 +30,7 @@ namespace SEHotasPlugin
         private static void DetectAndAcquireDevices()
         {
             devices.Clear();
-
             DetectGameControlDevices();
-
-            if (!IsSaitekSwitchPanelPresent())
-            {
-                DetectSaitekSwitchPanel();
-            }
         }
 
         private static void DetectGameControlDevices()
@@ -47,44 +39,6 @@ namespace SEHotasPlugin
             {
                 TryAcquireDevice(deviceInstance);
             }
-        }
-
-        private static bool IsSaitekSwitchPanelPresent()
-        {
-            foreach (var device in devices)
-            {
-                if (device.Information.ProductName == SaitekSwitchPanelName)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static void DetectSaitekSwitchPanel()
-        {
-            foreach (var deviceInstance in directInput.GetDevices(DeviceClass.All, DeviceEnumerationFlags.AttachedOnly))
-            {
-                if (IsSaitekSwitchPanel(deviceInstance))
-                {
-                    if (TryAcquireDevice(deviceInstance))
-                    {
-                        Console.WriteLine("Saitek Pro Flight Switch Panel successfully added!");
-                        return;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Failed to acquire Saitek Switch Panel");
-                    }
-                }
-            }
-            Console.WriteLine("Saitek Pro Flight Switch Panel not found or could not be acquired.");
-        }
-
-        private static bool IsSaitekSwitchPanel(DeviceInstance deviceInstance)
-        {
-            return deviceInstance.ProductName == SaitekSwitchPanelName &&
-                   deviceInstance.Type == DeviceType.Device;
         }
 
         private static bool TryAcquireDevice(DeviceInstance deviceInstance)
@@ -117,10 +71,7 @@ namespace SEHotasPlugin
                 {
                     joystick.Acquire();
                 }
-                catch
-                {
-
-                }
+                catch { }
             }
         }
 
@@ -144,7 +95,6 @@ namespace SEHotasPlugin
         public static void LoadAutosave()
         {
             string profilePath = GetAutosaveProfilePath();
-
             if (!File.Exists(profilePath))
                 return;
 
@@ -152,19 +102,14 @@ namespace SEHotasPlugin
             {
                 var json = File.ReadAllText(profilePath);
                 var profileData = JsonConvert.DeserializeObject<ProfileSystem.SerializableProfile>(json);
-
-                if (profileData == null)
-                    return;
+                if (profileData == null) return;
 
                 ClearExistingBindings();
                 LoadDeviceBindings(profileData);
                 LoadAxisSensitivity(profileData);
                 LoadReverseOption(profileData);
             }
-            catch
-            {
-
-            }
+            catch { }
         }
 
         private static string GetAutosaveProfilePath()
@@ -183,7 +128,7 @@ namespace SEHotasPlugin
         {
             typeof(Binder)
                 .GetField("_bindings", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
-                ?.SetValue(null, new Dictionary<string, Dictionary<string, DeviceButton>>());
+                ?.SetValue(null, new Dictionary<Guid, Dictionary<string, DeviceButton>>());
         }
 
         private static void LoadDeviceBindings(ProfileSystem.SerializableProfile profileData)
@@ -200,23 +145,19 @@ namespace SEHotasPlugin
             }
         }
 
-        private static bool IsDeviceConnected(string deviceName)
+        private static bool IsDeviceConnected(Guid deviceGuid)
         {
             foreach (var device in Devices)
             {
-                if (device.Information.InstanceName == deviceName)
-                {
+                if (device.Information.InstanceGuid == deviceGuid)
                     return true;
-                }
             }
             return false;
         }
 
         private static void LoadAxisSensitivity(ProfileSystem.SerializableProfile profileData)
         {
-            if (profileData.AxisSensitivity == null)
-                return;
-
+            if (profileData.AxisSensitivity == null) return;
             foreach (var sensitivityPair in profileData.AxisSensitivity)
             {
                 Binder.AxisSensitivity[sensitivityPair.Key] = sensitivityPair.Value;

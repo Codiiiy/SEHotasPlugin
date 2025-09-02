@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using Sandbox.Game;
 using Sandbox.Game.Gui;
@@ -16,6 +15,9 @@ namespace SEHotasPlugin
     public static class OptionsPage
     {
         public static bool inputCapture = false;
+        public static float bindingAlignment = -0.05f;
+
+
         public static void AddHotasPageContent(MyGuiScreenOptionsControls instance, object controlsList, object keyObj)
         {
 
@@ -289,9 +291,11 @@ namespace SEHotasPlugin
                             string existingBinding = Binder.GetBoundButton(actionKey);
                             string buttonText = string.IsNullOrEmpty(existingBinding) ? "Not Bound" : existingBinding;
 
+                            string boundButton = Binder.GetBoundButton(actionKey);
+                            Guid? boundDeviceId = Binder.GetDeviceForAction(actionKey);
 
                             var bindingButton = new MyGuiControlButton(
-                                position: centerOrigin + rowDelta,
+                                position: centerOrigin + rowDelta + new Vector2(bindingAlignment, 0f),
                                 visualStyle: MyGuiControlButtonStyleEnum.ControlSetting,
                                 size: new Vector2(0.05f, 0.01f),
                                 text: new StringBuilder(buttonText),
@@ -305,9 +309,19 @@ namespace SEHotasPlugin
 
                                         string deviceName = device.Information?.ProductName ?? "Unknown Device";
                                         btn.Text = capturedButton.ToString();
-                                        Binder.Bind(deviceName, page[captureIndex].Replace(" ", ""), capturedButton);
+                                        Binder.Bind(device.Information.InstanceGuid, actionKey, capturedButton);
                                         ProfileSystem.Autosave();
                                         inputCapture = false;
+
+                                        var deviceLabelToUpdate = controlsListObj.Cast<MyGuiControlBase>()
+                                            .OfType<MyGuiControlLabel>()
+                                            .FirstOrDefault(lbl => lbl.Text != null && lbl.Text.StartsWith("Device:") &&
+                                                          Math.Abs(lbl.Position.Y - (centerOrigin + new Vector2(0.15f, 0f) + rowDelta).Y) < 0.001f);
+
+                                        if (deviceLabelToUpdate != null)
+                                        {
+                                            deviceLabelToUpdate.Text = "Device: \"" + deviceName + "\"";
+                                        }
                                     });
 
                                 }
@@ -317,7 +331,7 @@ namespace SEHotasPlugin
                             instance.Controls.Add(bindingButton);
 
                             var clearButton = new MyGuiControlButton(
-                                centerOrigin + new Vector2(0.08f, 0f) + rowDelta,
+                                centerOrigin + new Vector2(0.08f, 0f) + rowDelta + new Vector2(bindingAlignment, 0f),
                                 MyGuiControlButtonStyleEnum.Close,
                                 new Vector2(0.04f, 0.04f)
                             );
@@ -327,9 +341,38 @@ namespace SEHotasPlugin
                                 Binder.ClearBinding(actionKey);
                                 bindingButton.Text = "Not Bound";
                                 ProfileSystem.Autosave();
+
+                                var deviceLabelToUpdate = controlsListObj.Cast<MyGuiControlBase>()
+                                    .OfType<MyGuiControlLabel>()
+                                    .FirstOrDefault(lbl => lbl.Text != null && lbl.Text.StartsWith("Device:") &&
+                                                  Math.Abs(lbl.Position.Y - (centerOrigin + new Vector2(0.15f, 0f) + rowDelta).Y) < 0.001f);
+
+                                if (deviceLabelToUpdate != null)
+                                {
+                                    deviceLabelToUpdate.Text = "";
+                                }
                             };
                             controlsListObj.Add(clearButton);
                             instance.Controls.Add(clearButton);
+
+                            string deviceLabelText = "";
+                            if (boundDeviceId.HasValue)
+                            {
+                                var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceGuid == boundDeviceId.Value);
+                                string deviceName = joystick?.Information?.ProductName ?? "Unknown Device";
+                                deviceLabelText = $"Device: \"{deviceName}\"";
+                            }
+                            var deviceInfoLabel = new MyGuiControlLabel(
+                                centerOrigin + new Vector2(0.1f, -0.01f) + rowDelta + new Vector2(bindingAlignment, 0f),
+                                null,
+                                deviceLabelText,
+                                null,
+                                0.7f,
+                                "Gray",
+                                MyGuiDrawAlignEnum.HORISONTAL_LEFT_AND_VERTICAL_CENTER
+                            );
+                            controlsListObj.Add(deviceInfoLabel);
+                            instance.Controls.Add(deviceInfoLabel);
                         }
                     }
                 }

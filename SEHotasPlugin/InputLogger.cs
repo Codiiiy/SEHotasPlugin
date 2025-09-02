@@ -1,19 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Policy;
 using SharpDX.DirectInput;
 
 namespace SEHotasPlugin
 {
     public static class InputLogger
     {
-
         private static float _DeadZone = 0.3f;
         public static bool _reverseOption = true;
         private const float ButtonAxisThreshold = 0.5f;
         private static bool _isCapturing = false;
         private static Action<Joystick, DeviceManager.DeviceButton> _onCaptured;
+
         private static Dictionary<string, bool> _previousButtonStates = new Dictionary<string, bool>();
 
         private class DeviceSnapshot
@@ -125,13 +124,42 @@ namespace SEHotasPlugin
             return "Center";
         }
 
-        public static bool IsButtonPressed(string buttonName)
+        private static (Guid? deviceGuid, string actionName) FindDeviceAndActionForBinding(DeviceManager.DeviceButton binding)
         {
-            string deviceName = FindDeviceForButton(buttonName);
-            if (string.IsNullOrEmpty(deviceName))
-                return false;
+            var bindingsField = typeof(Binder).GetField("_bindings",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
-            var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceName == deviceName);
+            if (!(bindingsField?.GetValue(null) is Dictionary<Guid, Dictionary<string, DeviceManager.DeviceButton>> allBindings))
+                return (null, null);
+
+            foreach (var devicePair in allBindings)
+            {
+                foreach (var actionPair in devicePair.Value)
+                {
+                    if (ReferenceEquals(actionPair.Value, binding))
+                    {
+                        return (devicePair.Key, actionPair.Key);
+                    }
+                }
+            }
+
+            foreach (var devicePair in allBindings)
+            {
+                foreach (var actionPair in devicePair.Value)
+                {
+                    if (actionPair.Value.ButtonName == binding.ButtonName)
+                    {
+                        return (devicePair.Key, actionPair.Key);
+                    }
+                }
+            }
+
+            return (null, null);
+        }
+
+        private static bool GetDeviceButtonState(Guid deviceGuid, string buttonName)
+        {
+            var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceGuid == deviceGuid);
             if (joystick == null)
                 return false;
 
@@ -147,35 +175,20 @@ namespace SEHotasPlugin
             }
         }
 
-        private static string FindDeviceForButton(string buttonName)
-        {
-            var bindingsField = typeof(Binder).GetField("_bindings",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
-
-            if (bindingsField?.GetValue(null) is Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>> bindings)
-            {
-                foreach (var devicePair in bindings)
-                {
-                    foreach (var actionPair in devicePair.Value)
-                    {
-                        if (actionPair.Value.ButtonName == buttonName)
-                            return devicePair.Key;
-                    }
-                }
-            }
-            return null;
-        }
-
         public static bool IsButtonPressedOnDevice(JoystickState state, string buttonName)
         {
-            if (buttonName.StartsWith("Button") && !buttonName.Contains("Axis"))
+            if (buttonName.StartsWith("Button") && !buttonName.Contains("Axis") && !buttonName.Contains("POV"))
             {
-                if (int.TryParse(buttonName.Substring(6), out int index))
+                string numberPart = buttonName.Substring(6);
+                if (int.TryParse(numberPart, out int buttonNumber))
                 {
-                    int btnIndex = index - 1;
-                    if (btnIndex >= 0 && btnIndex < state.Buttons.Length)
-                        return state.Buttons[btnIndex];
+                    int index = buttonNumber - 1;
+                    if (index >= 0 && index < state.Buttons.Length)
+                    {
+                        return state.Buttons[index];
+                    }
                 }
+                return false;
             }
 
             if (buttonName.StartsWith("POV"))
@@ -231,50 +244,42 @@ namespace SEHotasPlugin
             }
         }
 
-        private static string FindDeviceForAxis(string axisName)
+        public static float GetAxisValue(string axisName)
         {
             var bindingsField = typeof(Binder).GetField("_bindings",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
 
-            if (bindingsField?.GetValue(null) is Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>> bindings)
+            if (!(bindingsField?.GetValue(null) is Dictionary<Guid, Dictionary<string, DeviceManager.DeviceButton>> bindings))
+                return 0f;
+
+            foreach (var devicePair in bindings)
             {
-                foreach (var devicePair in bindings)
+                var deviceGuid = devicePair.Key;
+                foreach (var actionPair in devicePair.Value)
                 {
-                    foreach (var actionPair in devicePair.Value)
+                    string buttonName = actionPair.Value.ButtonName;
+                    if (buttonName.Contains("Axis") && buttonName.StartsWith(axisName + " "))
                     {
-                        string buttonName = actionPair.Value.ButtonName;
-                        if (buttonName.Contains("Axis") && buttonName.StartsWith(axisName + " "))
-                            return devicePair.Key;
+                        var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceGuid == deviceGuid);
+                        if (joystick != null)
+                        {
+                            try
+                            {
+                                joystick.Poll();
+                                var state = joystick.GetCurrentState();
+                                int value = GetRawAxisValue(state, axisName);
+                                float normalized = (value - 32767.5f) / 32767.5f;
+                                return InputLogger.ApplyDeadzone(normalized);
+                            }
+                            catch
+                            {
+                                continue;
+                            }
+                        }
                     }
                 }
             }
-            return null;
-        }
-
-        public static float GetAxisValue(string axisName)
-        {
-            string deviceName = FindDeviceForAxis(axisName);
-            if (string.IsNullOrEmpty(deviceName))
-                return 0f;
-
-            var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceName == deviceName);
-            if (joystick == null)
-                return 0f;
-
-            try
-            {
-                joystick.Poll();
-                var state = joystick.GetCurrentState();
-
-                int value = GetRawAxisValue(state, axisName);
-                float normalized = (value - 32767.5f) / 32767.5f;
-
-                return InputLogger.ApplyDeadzone(normalized);
-            }
-            catch
-            {
-                return 0f;
-            }
+            return 0f;
         }
 
         public static float GetInputValue(string actionName)
@@ -283,11 +288,11 @@ namespace SEHotasPlugin
             if (string.IsNullOrEmpty(boundButton))
                 return 0f;
 
-            string deviceName = Binder.GetDeviceForAction(actionName);
-            if (string.IsNullOrEmpty(deviceName))
+            Guid? deviceId = Binder.GetDeviceForAction(actionName);
+            if (!deviceId.HasValue)
                 return 0f;
 
-            var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceName == deviceName);
+            var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceGuid == deviceId.Value);
             if (joystick == null)
                 return 0f;
 
@@ -306,7 +311,6 @@ namespace SEHotasPlugin
 
                         int value = GetRawAxisValue(state, axisName);
                         float normalized = (value - 32767.5f) / 32767.5f;
-
                         normalized = InputLogger.ApplyDeadzone(normalized);
 
                         if (direction == "-")
@@ -332,11 +336,11 @@ namespace SEHotasPlugin
             if (string.IsNullOrEmpty(boundButton))
                 return 0f;
 
-            string deviceName = Binder.GetDeviceForAction(actionName);
-            if (string.IsNullOrEmpty(deviceName))
+            Guid? deviceId = Binder.GetDeviceForAction(actionName);
+            if (!deviceId.HasValue)
                 return 0f;
 
-            var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceName == deviceName);
+            var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceGuid == deviceId.Value);
             if (joystick == null)
                 return 0f;
 
@@ -355,7 +359,7 @@ namespace SEHotasPlugin
 
                         int value = GetRawAxisValue(state, axisName);
                         float normalized = (value - 32767.5f) / 32767.5f;
-                        normalized = InputLogger.ApplyDeadzoneWithScaling(normalized);
+                        normalized = ApplyDeadzoneWithScaling(normalized);
 
                         if (direction == "-")
                             return normalized < 0 ? -normalized : 0f;
@@ -372,38 +376,107 @@ namespace SEHotasPlugin
             return 0f;
         }
 
+        public static bool IsButtonPressed(DeviceManager.DeviceButton binding)
+        {
+            if (binding == null) return false;
+
+            var (deviceGuid, actionName) = FindDeviceAndActionForBinding(binding);
+
+            if (!deviceGuid.HasValue || string.IsNullOrEmpty(actionName))
+            {
+                Debug.Log($"No device/action found for binding: {binding.ButtonName}");
+                return false;
+            }
+
+            return GetDeviceButtonState(deviceGuid.Value, binding.ButtonName);
+        }
 
         public static void HandleToggleButton(DeviceManager.DeviceButton binding, System.Action action)
         {
             if (binding == null) return;
 
-            string deviceName = FindDeviceForButton(binding.ButtonName);
-            if (string.IsNullOrEmpty(deviceName))
+            var (deviceGuid, actionName) = FindDeviceAndActionForBinding(binding);
+
+            if (!deviceGuid.HasValue || string.IsNullOrEmpty(actionName))
                 return;
 
-            string stateKey = $"{deviceName}_{binding.ButtonName}";
+            string stateKey = $"{deviceGuid.Value}_{binding.ButtonName}";
 
-            var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceName == deviceName);
-            if (joystick == null)
-                return;
+            bool currentState = GetDeviceButtonState(deviceGuid.Value, binding.ButtonName);
+            bool previousState = _previousButtonStates.ContainsKey(stateKey)
+                ? _previousButtonStates[stateKey]
+                : false;
 
-            try
+            if (currentState && !previousState)
             {
-                joystick.Poll();
-                var state = joystick.GetCurrentState();
-                bool currentState = IsButtonPressedOnDevice(state, binding.ButtonName);
-                bool previousState = _previousButtonStates.ContainsKey(stateKey) ?
-                                    _previousButtonStates[stateKey] : false;
-
-                if (currentState && !previousState)
-                {
-                    action?.Invoke();
-                }
-
-                _previousButtonStates[stateKey] = currentState;
+                var joystick = DeviceManager.Devices.FirstOrDefault(d => d.Information.InstanceGuid == deviceGuid.Value);
+                Debug.Log($"Toggle button activated: {binding.ButtonName} on device {joystick?.Information.InstanceName ?? "Unknown"} (GUID: {deviceGuid.Value}) for action: {actionName}");
+                action?.Invoke();
             }
-            catch { }
+
+            _previousButtonStates[stateKey] = currentState;
         }
+
+        public static Dictionary<Guid, JoystickState> PollAllDevices()
+        {
+            var deviceStates = new Dictionary<Guid, JoystickState>();
+
+            foreach (var joystick in DeviceManager.Devices)
+            {
+                try
+                {
+                    joystick.Poll();
+                    var state = joystick.GetCurrentState();
+                    deviceStates[joystick.Information.InstanceGuid] = state;
+                }
+                catch (Exception ex)
+                {
+                    Debug.Log($"Failed to poll device {joystick.Information.InstanceName}: {ex.Message}");
+                }
+            }
+
+            return deviceStates;
+        }
+
+        public static Dictionary<string, Dictionary<string, bool>> GetAllDeviceButtonStates()
+        {
+            var allStates = new Dictionary<string, Dictionary<string, bool>>();
+
+            foreach (var joystick in DeviceManager.Devices)
+            {
+                try
+                {
+                    joystick.Poll();
+                    var state = joystick.GetCurrentState();
+                    var deviceName = $"{joystick.Information.InstanceName} ({joystick.Information.InstanceGuid})";
+                    var buttonStates = new Dictionary<string, bool>();
+
+                    for (int i = 0; i < state.Buttons.Length; i++)
+                    {
+                        buttonStates[$"Button{i + 1}"] = state.Buttons[i];
+                    }
+
+                    for (int i = 0; i < state.PointOfViewControllers.Length; i++)
+                    {
+                        int angle = state.PointOfViewControllers[i];
+                        if (angle >= 0)
+                        {
+                            string dir = PovToDirection(angle);
+                            buttonStates[$"POV{i + 1} {dir}"] = true;
+                        }
+                    }
+
+                    allStates[deviceName] = buttonStates;
+                }
+                catch (Exception ex)
+                {
+                    Debug.Log($"Failed to get button states for device {joystick.Information.InstanceName}: {ex.Message}");
+                }
+            }
+
+            return allStates;
+        }
+
         public static float DeadZone
         {
             get => _DeadZone;
@@ -441,7 +514,5 @@ namespace SEHotasPlugin
             float scaledValue = (absValue - _DeadZone) / (1f - _DeadZone);
             return value < 0 ? -scaledValue : scaledValue;
         }
-
-        public static void ToggleReverse() { PatchUtils.reverseToggled = !PatchUtils.reverseToggled; }
     }
 }

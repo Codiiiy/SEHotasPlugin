@@ -7,8 +7,8 @@ namespace SEHotasPlugin
 {
     public static class Binder
     {
-        private static readonly Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>> _bindings =
-            new Dictionary<string, Dictionary<string, DeviceManager.DeviceButton>>();
+        private static readonly Dictionary<Guid, Dictionary<string, DeviceManager.DeviceButton>> _bindings =
+            new Dictionary<Guid, Dictionary<string, DeviceManager.DeviceButton>>();
 
         public static Dictionary<string, float> AxisSensitivity = new Dictionary<string, float>()
         {
@@ -27,22 +27,22 @@ namespace SEHotasPlugin
             return 1.0f;
         }
 
-        public static void Bind(string deviceName, string actionName, DeviceManager.DeviceButton deviceButton)
+        public static void Bind(Guid deviceGuid, string actionName, DeviceManager.DeviceButton deviceButton)
         {
-            if (!_bindings.ContainsKey(deviceName))
-                _bindings[deviceName] = new Dictionary<string, DeviceManager.DeviceButton>();
-            _bindings[deviceName][actionName] = deviceButton;
+            if (!_bindings.ContainsKey(deviceGuid))
+                _bindings[deviceGuid] = new Dictionary<string, DeviceManager.DeviceButton>();
+            _bindings[deviceGuid][actionName] = deviceButton;
         }
 
         public static DeviceManager.DeviceButton GetBinding(string actionName)
         {
-            foreach (var deviceBindings in _bindings.Values)
-                if (deviceBindings.ContainsKey(actionName))
-                    return deviceBindings[actionName];
+            Guid? deviceGuid = GetDeviceForAction(actionName);
+            if (deviceGuid.HasValue && _bindings.ContainsKey(deviceGuid.Value))
+                return _bindings[deviceGuid.Value][actionName];
             return null;
         }
 
-        public static string GetDeviceForAction(string actionName)
+        public static Guid? GetDeviceForAction(string actionName)
         {
             foreach (var devicePair in _bindings)
             {
@@ -52,10 +52,9 @@ namespace SEHotasPlugin
             return null;
         }
 
-
-        public static bool IsDeviceConnected(string deviceName)
+        public static bool IsDeviceConnected(Guid deviceGuid)
         {
-            return DeviceManager.Devices.Any(d => d.Information.InstanceName == deviceName);
+            return DeviceManager.Devices.Any(d => d.Information.InstanceGuid == deviceGuid);
         }
 
         public static string GetBoundButton(string actionName)
@@ -73,11 +72,9 @@ namespace SEHotasPlugin
                     devicePair.Value.Remove(actionName);
                     if (devicePair.Value.Count == 0)
                         _bindings.Remove(devicePair.Key);
-
                     break;
                 }
             }
         }
-
     }
 }

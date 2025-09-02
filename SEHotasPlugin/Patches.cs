@@ -8,6 +8,7 @@ using VRage.Game.ModAPI;
 using Sandbox.Game.World;
 using VRageMath;
 using Sandbox.Game.Entities.Character;
+using Sandbox.ModAPI;
 
 namespace SEHotasPlugin
 {
@@ -18,6 +19,10 @@ namespace SEHotasPlugin
         {
             try
             {
+                if (MyAPIGateway.Gui.IsCursorVisible || MyAPIGateway.Gui.ChatEntryVisible)
+                {
+                    return;
+                }
                 var controller = __instance.ControlledEntity as MyShipController;
                 if (controller == null) return;
 
@@ -56,5 +61,7 @@ namespace SEHotasPlugin
                 Debug.Log($"PluginPatch error: {ex.Message}");
             }
         }
+
     }
+
 }
