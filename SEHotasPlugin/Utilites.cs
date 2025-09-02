@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace SEHotasPlugin
 {
@@ -20,5 +21,6 @@ namespace SEHotasPlugin
                 File.AppendAllText(logFile, message + Environment.NewLine);
             }
         }
+        
     }
 }

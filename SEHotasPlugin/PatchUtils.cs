@@ -11,6 +11,7 @@ using Sandbox.Game.Gui;
 using Sandbox.Game.World;
 using Sandbox.Graphics.GUI;
 using VRage.Game.ModAPI;
+using VRage.Game.VisualScripting;
 using VRageMath;
 
 namespace SEHotasPlugin
@@ -68,7 +69,7 @@ namespace SEHotasPlugin
 
         public static void ProcessMovementAndRotation(MyShipController controller, CachedBindings bindings)
         {
-            float forward = CalculateForwardMovement(bindings.ReverseToggle);
+            float forward = CalculateForwardMovement();
             float moveScale = (forward != 0) ? 1f : MOVE_SCALE;
 
             float updown = (InputLogger.GetRawInputValue("Up") - InputLogger.GetRawInputValue("Down")) * moveScale;
@@ -86,12 +87,11 @@ namespace SEHotasPlugin
             }
         }
 
-        private static float CalculateForwardMovement(DeviceManager.DeviceButton reverseToggle)
+        private static float CalculateForwardMovement()
         {
             float forward;
-            if (!InputLogger._reverseOption)
+            if (InputLogger._reverseOption)
             {
-                InputLogger.HandleToggleButton(reverseToggle, () => InputLogger.ToggleReverse());
                 forward = -InputLogger.GetRawInputValue("Forward");
                 if (reverseToggled)
                 {
@@ -117,10 +117,11 @@ namespace SEHotasPlugin
         {
             try
             {
-                if (bindings.Primary != null && InputLogger.IsButtonPressed(bindings.Primary.ButtonName))
+                if (bindings.Primary != null && InputLogger.IsButtonPressed(bindings.Primary))
                 {
                     controller.Shoot(MyShootActionEnum.PrimaryAction);
                 }
+                InputLogger.HandleToggleButton(bindings.ReverseToggle, () => ToggleReverse());
                 InputLogger.HandleToggleButton(bindings.Secondary, () => TryRequestTargetLock(character));
                 InputLogger.HandleToggleButton(bindings.Dampener, () => controller.SwitchDamping());
                 InputLogger.HandleToggleButton(bindings.Broadcasting, () => controller.SwitchBroadcasting());
@@ -160,6 +161,7 @@ namespace SEHotasPlugin
                 combo.AddItem(JOYSTICK_CONTROL_TYPE_ID, JOYSTICK_CONTROL_TYPE_NAME, null, null);
             }
         }
+
 
         public static void AddJoystickControlsPage(MyGuiScreenOptionsControls instance)
         {
@@ -220,7 +222,6 @@ namespace SEHotasPlugin
                 if (targetFocusComponent != null)
                 {
                     targetFocusComponent.OnLockRequest();
-                    Debug.Log("Target lock requested");
                 }
                 else
                 {
@@ -232,7 +233,6 @@ namespace SEHotasPlugin
                 Debug.Log("Error requesting target lock: " + ex.Message);
             }
         }
+        public static void ToggleReverse() { reverseToggled = !reverseToggled; }
     }
 }
-
-

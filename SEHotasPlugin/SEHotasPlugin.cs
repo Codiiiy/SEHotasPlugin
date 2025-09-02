@@ -19,6 +19,7 @@ namespace SEHotasPlugin
             DeviceManager.Init();
             _harmony = new Harmony("com.myseplugin.joystickmenu");
             _harmony.PatchAll();
+
         }
 
         public void Update()
