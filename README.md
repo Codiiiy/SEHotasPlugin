@@ -39,6 +39,7 @@ I’ve tested this on Keen’s official servers without any issues. Keep in mind
 - Additional view controls.  
 - Dedicated controls for turret mode.
 - add a brake toggle for wheels
+- Analog thrust
 
 ---
 
