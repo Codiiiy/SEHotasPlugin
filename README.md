@@ -17,7 +17,7 @@ I’ve tested this on Keen’s official servers without any issues. Keep in mind
 
 ## 🚀 Quick Start Guide  
 
-1. Due to Space Engineers launcher being archived, this was moved to Pulsar found here. [Space Engineers Pulsar](https://github.com/SpaceGT/Pulsar)-> <del>~~Install a plugin loader (such as the **Space Engineers Launcher**).  
+1. Due to Space Engineers launcher being archived, this was moved to Pulsar found here. [Space Engineers Pulsar](https://github.com/SpaceGT/Pulsar) <del>~~Install a plugin loader (such as the **Space Engineers Launcher**).  
    - [Space Engineers Plugin Loader](https://github.com/sepluginloader/SpaceEngineersLauncher) </del>
 2. download release dll and place it in Space Engineers/Bin64/Plugins/Local  
 3. Launch the game and go to **Options → Controls**.  
