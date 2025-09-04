@@ -5,9 +5,6 @@ using VRage.Input;
 using Sandbox.Game;
 using VRage.Utils;
 
-
-
-
 namespace SEHotasPlugin
 {
     public class MyPlugin : IPlugin
