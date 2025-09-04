@@ -37,7 +37,8 @@ I’ve tested this on Keen’s official servers without any issues. Keep in mind
 - Save/load profile functionality so users can share setups easily.  
 - Per-binding sensitivity and curve adjustments.  
 - Additional view controls.  
-- Dedicated controls for turret mode.  
+- Dedicated controls for turret mode.
+- add a brake toggle for wheels
 
 ---
 
