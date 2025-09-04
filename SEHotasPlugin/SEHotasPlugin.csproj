@@ -33,12 +33,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="0Harmony">
-      <HintPath>X:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64\0Harmony.dll</HintPath>
-      <Private>False</Private>
+      <HintPath>X:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64\Plugins\Libraries\0Harmony.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json, Version=13.0.1.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>X:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64\Newtonsoft.Json.dll</HintPath>
+      <HintPath>X:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64\Plugins\Libraries\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="Sandbox.Common">
       <HintPath>X:\SteamLibrary\steamapps\common\SpaceEngineers\Bin64\Sandbox.Common.dll</HintPath>

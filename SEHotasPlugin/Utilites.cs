@@ -6,7 +6,7 @@ namespace SEHotasPlugin
 {
     class Debug
     {
-        public static bool debugMode = true;
+        public static bool debugMode = false;
         public static void Log(string message)
         {
             if (debugMode)

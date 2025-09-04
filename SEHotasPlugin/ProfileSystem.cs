@@ -8,8 +8,7 @@ namespace SEHotasPlugin
     public static class ProfileSystem
     {
         private static readonly string BasePath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "SpaceEngineers",
+            VRage.FileSystem.MyFileSystem.UserDataPath,
             "Plugins",
             "SEHotasPlugin",
             "Profiles");
