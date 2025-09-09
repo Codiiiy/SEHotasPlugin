@@ -47,14 +47,18 @@ namespace SEHotasPlugin
     }
 
     [HarmonyPatch(typeof(MyGuiScreenOptionsControls), "RecreateControls")]
+    [HarmonyPriority(Priority.Low)]
     public static class PluginPatch
     {
         static void Postfix(MyGuiScreenOptionsControls __instance)
         {
             try
             {
-                PatchUtils.AddJoystickControlType(__instance);
-                PatchUtils.AddJoystickControlsPage(__instance);
+                System.Threading.Tasks.Task.Delay(10).ContinueWith(_ =>
+                {
+                    PatchUtils.AddJoystickControlType(__instance);
+                    PatchUtils.AddJoystickControlsPage(__instance);
+                });
             }
             catch (Exception ex)
             {
