@@ -151,39 +151,7 @@ namespace SEHotasPlugin
             }
         }
 
-        public static void AddJoystickControlType(MyGuiScreenOptionsControls instance)
-        {
-            var controlsType = typeof(MyGuiScreenOptionsControls);
-            var controlListField = controlsType.GetField("m_controlTypeList", BindingFlags.Instance | BindingFlags.NonPublic);
 
-            if (controlListField?.GetValue(instance) is MyGuiControlCombobox combo)
-            {
-                combo.AddItem(JOYSTICK_CONTROL_TYPE_ID, JOYSTICK_CONTROL_TYPE_NAME, null, null);
-            }
-        }
-
-
-        public static void AddJoystickControlsPage(MyGuiScreenOptionsControls instance)
-        {
-            var controlsType = typeof(MyGuiScreenOptionsControls);
-            var allControlsField = controlsType.GetField("m_allControls", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            if (!(allControlsField?.GetValue(instance) is System.Collections.IDictionary dict))
-                return;
-
-            var dictType = dict.GetType();
-            var valueType = dictType.GetGenericArguments()[1];
-            var keyEnumType = dictType.GetGenericArguments()[0];
-
-            var keyObj = Enum.ToObject(keyEnumType, JOYSTICK_CONTROL_TYPE_ID);
-
-            if (!dict.Contains(keyObj))
-            {
-                var listInstance = Activator.CreateInstance(valueType);
-                dict.Add(keyObj, listInstance);
-                OptionsPage.AddHotasPageContent(instance, listInstance, keyObj);
-            }
-        }
 
         public struct CachedBindings
         {
@@ -234,5 +202,39 @@ namespace SEHotasPlugin
             }
         }
         public static void ToggleReverse() { reverseToggled = !reverseToggled; }
+
+        public static void AddJoystickControlType(MyGuiScreenOptionsControls instance)
+        {
+            var controlsType = typeof(MyGuiScreenOptionsControls);
+            var controlListField = controlsType.GetField("m_controlTypeList", BindingFlags.Instance | BindingFlags.NonPublic);
+
+            if (controlListField?.GetValue(instance) is MyGuiControlCombobox combo)
+            {
+                combo.AddItem(JOYSTICK_CONTROL_TYPE_ID, JOYSTICK_CONTROL_TYPE_NAME, null, null);
+            }
+        }
+
+
+        public static void AddJoystickControlsPage(MyGuiScreenOptionsControls instance)
+        {
+            var controlsType = typeof(MyGuiScreenOptionsControls);
+            var allControlsField = controlsType.GetField("m_allControls", BindingFlags.Instance | BindingFlags.NonPublic);
+
+            if (!(allControlsField?.GetValue(instance) is System.Collections.IDictionary dict))
+                return;
+
+            var dictType = dict.GetType();
+            var valueType = dictType.GetGenericArguments()[1];
+            var keyEnumType = dictType.GetGenericArguments()[0];
+
+            var keyObj = Enum.ToObject(keyEnumType, JOYSTICK_CONTROL_TYPE_ID);
+
+            if (!dict.Contains(keyObj))
+            {
+                var listInstance = Activator.CreateInstance(valueType);
+                dict.Add(keyObj, listInstance);
+                OptionsPage.AddHotasPageContent(instance, listInstance, keyObj);
+            }
+        }
     }
 }
