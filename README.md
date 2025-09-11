@@ -28,7 +28,6 @@ I’ve tested this on Keen’s official servers without any issues. Keep in mind
 ## 🚧 Known Issues  
 - Firing sounds sometimes fail to play.  
 - Only devices categorized as *game controllers* are detected.
-- I forgot to add braking for wheels. Soon.....
 
 ---
 
@@ -39,7 +38,7 @@ I’ve tested this on Keen’s official servers without any issues. Keep in mind
 - Per-binding sensitivity and curve adjustments.  
 - Additional view controls.  
 - Dedicated controls for turret mode.
-- add a brake toggle for wheels
+- <del>add a brake toggle for wheels</del>
 - Analog thrust
 
 ---
