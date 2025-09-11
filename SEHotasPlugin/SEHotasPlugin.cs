@@ -4,6 +4,9 @@ using System.Reflection;
 using VRage.Input;
 using Sandbox.Game;
 using VRage.Utils;
+using Sandbox.Graphics.GUI;
+using Sandbox.Game.Gui;
+using System;
 
 namespace SEHotasPlugin
 {
@@ -14,8 +17,8 @@ namespace SEHotasPlugin
         public void Init(object gameInstance)
         {
             DeviceManager.Init();
-            _harmony = new Harmony("com.myseplugin.joystickmenu");
-            _harmony.PatchAll();
+            _harmony = new Harmony("com.Codiiiy.SEHotasPlugin");
+            _harmony.PatchAll(Assembly.GetExecutingAssembly());
 
         }
 
@@ -29,7 +32,11 @@ namespace SEHotasPlugin
         public void Dispose()
         {
             DeviceManager.UnacquireDevices();
-            _harmony?.UnpatchAll("com.myseplugin.joystickmenu");
+            _harmony?.UnpatchAll("com.Codiiiy.SEHotasPlugin");
+        }
+        public void OpenConfigDialog()
+        {
+            MyGuiSandbox.AddScreen(new OptionsPage.HotasConfigScreen());
         }
     }
 }
