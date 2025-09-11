@@ -42,6 +42,7 @@ namespace SEHotasPlugin
                 NextToolitem = Binder.GetBinding("Nexttoolbaritem"),
                 PrevToolitem = Binder.GetBinding("Previoustoolbaritem"),
                 ReverseToggle = Binder.GetBinding("ReverseToggle"),
+                Wheelbrake = Binder.GetBinding("Wheelbrake"),
                 ItemBindings = GetItemBindings(),
                 PageBindings = GetPageBindings()
             };
@@ -121,6 +122,10 @@ namespace SEHotasPlugin
                 {
                     controller.Shoot(MyShootActionEnum.PrimaryAction);
                 }
+                if (bindings.Wheelbrake != null && InputLogger.IsButtonPressed(bindings.Wheelbrake))
+                {
+                    controller.TryEnableBrakes(true);
+                }
                 InputLogger.HandleToggleButton(bindings.ReverseToggle, () => ToggleReverse());
                 InputLogger.HandleToggleButton(bindings.Secondary, () => TryRequestTargetLock(character));
                 InputLogger.HandleToggleButton(bindings.Dampener, () => controller.SwitchDamping());
@@ -129,6 +134,7 @@ namespace SEHotasPlugin
                 InputLogger.HandleToggleButton(bindings.Terminal, () => controller.ShowTerminal());
                 InputLogger.HandleToggleButton(bindings.Park, () => controller.SwitchParkedStatus());
                 InputLogger.HandleToggleButton(bindings.Power, () => controller.SwitchReactorsLocal());
+
             }
             catch (Exception ex)
             {
@@ -168,6 +174,7 @@ namespace SEHotasPlugin
             public DeviceManager.DeviceButton NextToolitem;
             public DeviceManager.DeviceButton PrevToolitem;
             public DeviceManager.DeviceButton ReverseToggle;
+            public DeviceManager.DeviceButton Wheelbrake;
             public DeviceManager.DeviceButton[] ItemBindings;
             public DeviceManager.DeviceButton[] PageBindings;
         }
@@ -202,39 +209,5 @@ namespace SEHotasPlugin
             }
         }
         public static void ToggleReverse() { reverseToggled = !reverseToggled; }
-
-        public static void AddJoystickControlType(MyGuiScreenOptionsControls instance)
-        {
-            var controlsType = typeof(MyGuiScreenOptionsControls);
-            var controlListField = controlsType.GetField("m_controlTypeList", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            if (controlListField?.GetValue(instance) is MyGuiControlCombobox combo)
-            {
-                combo.AddItem(JOYSTICK_CONTROL_TYPE_ID, JOYSTICK_CONTROL_TYPE_NAME, null, null);
-            }
-        }
-
-
-        public static void AddJoystickControlsPage(MyGuiScreenOptionsControls instance)
-        {
-            var controlsType = typeof(MyGuiScreenOptionsControls);
-            var allControlsField = controlsType.GetField("m_allControls", BindingFlags.Instance | BindingFlags.NonPublic);
-
-            if (!(allControlsField?.GetValue(instance) is System.Collections.IDictionary dict))
-                return;
-
-            var dictType = dict.GetType();
-            var valueType = dictType.GetGenericArguments()[1];
-            var keyEnumType = dictType.GetGenericArguments()[0];
-
-            var keyObj = Enum.ToObject(keyEnumType, JOYSTICK_CONTROL_TYPE_ID);
-
-            if (!dict.Contains(keyObj))
-            {
-                var listInstance = Activator.CreateInstance(valueType);
-                dict.Add(keyObj, listInstance);
-                OptionsPage.AddHotasPageContent(instance, listInstance, keyObj);
-            }
-        }
     }
 }
